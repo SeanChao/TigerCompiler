@@ -2,7 +2,9 @@
 /* Lab2 Attention: You are only allowed to add code in this file and start at Line 26.*/
 #include <string.h>
 #include "util.h"
-#include "tokens.h"
+#include "symbol.h"
+#include "absyn.h"
+#include "y.tab.h"
 #include "errormsg.h"
 
 int charPos=1;
@@ -161,7 +163,7 @@ words   [{digits}{alphabets}]
 <STR>\\[\n\t\f ]+\\     {len_adjust();}
 <STR>\\         {len_adjust();}
 <STR>([_a-zA-Z0-9 \+\-\*\/\.]|\\n|\\t|\\{digits}{3}|\\^{alphabet})+       {len_adjust();strcat(sbuf, getstr(yytext));continue;}
-<STR>\"      {len_adjust(); yylval.sval = ((sbuf == NULL || sbuf[0] == 0) ? NULL : String(sbuf)); sbuf[0]='\0'; BEGIN DEFAULT; return STRING;}
+<STR>\"      {len_adjust(); yylval.sval = ((sbuf == NULL) ? NULL : String(sbuf)); sbuf[0]='\0'; BEGIN DEFAULT; return STRING;}
 
 <COMMENT>\/\*       {adjust();com_cnt++;continue;}
 <COMMENT>"*/"      {adjust();com_cnt--;if(com_cnt==0) BEGIN DEFAULT;}

@@ -1,0 +1,20 @@
+name: Test
+on:
+  push:
+    branches:
+      - master
+jobs:
+  test-build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install
+        run: |
+          apt-get update && apt-get install -y flex bison
+      - name: Build
+        run: |
+          make
+      - name: Test
+        run: /
+          ./gradeMe.sh
