@@ -4,7 +4,7 @@ on:
     branches:
       - master
 jobs:
-  test-build-deploy:
+  build-test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -16,5 +16,5 @@ jobs:
         run: |
           make
       - name: Test
-        run: /
+        run: |
           ./gradeMe.sh
