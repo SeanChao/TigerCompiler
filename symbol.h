@@ -7,7 +7,7 @@
 
 typedef struct S_symbol_ *S_symbol;
 
-/* Make a unique symbol from a given string.  
+/* Make a unique symbol from a given string.
  *  Different calls to S_Symbol("foo") will yield the same S_symbol
  *  value, even if the "foo" strings are at different locations. */
 S_symbol S_Symbol(string);
@@ -36,4 +36,6 @@ void S_beginScope(S_table t);
 /* Remove any bindings entered since the current scope began,
    and end the current scope. */
 void S_endScope(S_table t);
+
+void S_dump(S_table t, void (*show)(S_symbol sym, void *binding));
 #endif
