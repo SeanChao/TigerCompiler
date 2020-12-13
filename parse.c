@@ -2,19 +2,21 @@
  * parse.c - Parse source file.
  */
 
+#include "parse.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include "util.h"
-
-#include "symbol.h"
-#include "types.h"
-
 #include "absyn.h"
 #include "errormsg.h"
-#include "parse.h"
+#include "frame.h"
 #include "semant.h"
+#include "symbol.h"
+#include "temp.h"
+#include "tree.h"
+#include "types.h"
+#include "util.h"
 
 extern int yyparse(void);
+extern void pr_exp(FILE *, A_exp, int);
 extern A_exp absyn_root;
 
 /* parse source file fname;
@@ -36,8 +38,11 @@ int main(int argc, char **argv) {
     parse(argv[1]);
     // pr_exp(stderr,absyn_root,0);
     if (absyn_root) {
-        SEM_transProg(absyn_root);
+        F_fragList flist = SEM_transProg(absyn_root);
+        int k = 0;
+        for (; flist; flist = flist->tail) k++;
+        fprintf(stderr, "%d\n", k);
     }
-    fprintf(stderr, "\n");
+    // fprintf(stderr,"\n");
     return 0;
 }

@@ -1,0 +1,79 @@
+IR tree for function tigermain:
+ MOVE(
+  TEMP t103,
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    MOVE(
+     TEMP t105,
+     CALL(
+      NAME do_nothing1,
+       TEMP t100,
+       CONST 0,
+       NAME L2)),
+    ESEQ(
+     MOVE(
+      TEMP t102,
+      BINOP(PLUS,
+       TEMP t102,
+       CONST 12)),
+     TEMP t105))))
+-------====IR tree=====-----
+IR tree for function do_nothing2:
+ MOVE(
+  TEMP t103,
+  ESEQ(
+   MOVE(
+    TEMP t104,
+    CALL(
+     NAME do_nothing1,
+      MEM(
+       BINOP(PLUS,
+        TEMP t100,
+        CONST 8)),
+      MEM(
+       BINOP(PLUS,
+        TEMP t100,
+        CONST 12)),
+      NAME L0)),
+   ESEQ(
+    MOVE(
+     TEMP t102,
+     BINOP(PLUS,
+      TEMP t102,
+      CONST 12)),
+    ESEQ(
+     EXP(
+      TEMP t104),
+     NAME L1))))
+-------====IR tree=====-----
+IR tree for function do_nothing1:
+ MOVE(
+  TEMP t103,
+  ESEQ(
+   MOVE(
+    TEMP t101,
+    CALL(
+     NAME do_nothing2,
+      MEM(
+       BINOP(PLUS,
+        TEMP t100,
+        CONST 8)),
+      BINOP(PLUS,
+       MEM(
+        BINOP(PLUS,
+         TEMP t100,
+         CONST 12)),
+       CONST 1))),
+   ESEQ(
+    MOVE(
+     TEMP t102,
+     BINOP(PLUS,
+      TEMP t102,
+      CONST 8)),
+    ESEQ(
+     EXP(
+      TEMP t101),
+     CONST 0))))
+-------====IR tree=====-----

@@ -1,0 +1,1200 @@
+IR tree for function tigermain:
+ MOVE(
+  TEMP t108,
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    MOVE(
+     MEM(
+      BINOP(PLUS,
+       TEMP t100,
+       CONST -4)),
+     CALL(
+      NAME getchar)),
+    ESEQ(
+     EXP(
+      CONST 0),
+     ESEQ(
+      EXP(
+       CONST 0),
+      ESEQ(
+       EXP(
+        CONST 0),
+       ESEQ(
+        EXP(
+         CONST 0),
+        ESEQ(
+         MOVE(
+          MEM(
+           BINOP(PLUS,
+            TEMP t100,
+            CONST -8)),
+          ESEQ(
+           MOVE(
+            TEMP t147,
+            CALL(
+             NAME readlist,
+              TEMP t100)),
+           ESEQ(
+            MOVE(
+             TEMP t102,
+             BINOP(PLUS,
+              TEMP t102,
+              CONST 4)),
+            TEMP t147))),
+         ESEQ(
+          EXP(
+           CONST 0),
+          ESEQ(
+           MOVE(
+            MEM(
+             BINOP(PLUS,
+              TEMP t100,
+              CONST -12)),
+            ESEQ(
+             MOVE(
+              MEM(
+               BINOP(PLUS,
+                TEMP t100,
+                CONST -4)),
+              CALL(
+               NAME getchar)),
+             ESEQ(
+              EXP(
+               CONST 0),
+              ESEQ(
+               MOVE(
+                TEMP t148,
+                CALL(
+                 NAME readlist,
+                  TEMP t100)),
+               ESEQ(
+                MOVE(
+                 TEMP t102,
+                 BINOP(PLUS,
+                  TEMP t102,
+                  CONST 4)),
+                TEMP t148))))),
+           ESEQ(
+            EXP(
+             CONST 0),
+            ESEQ(
+             MOVE(
+              TEMP t150,
+              CALL(
+               NAME printlist,
+                TEMP t100,
+                ESEQ(
+                 MOVE(
+                  TEMP t149,
+                  CALL(
+                   NAME merge,
+                    TEMP t100,
+                    MEM(
+                     BINOP(PLUS,
+                      TEMP t100,
+                      CONST -8)),
+                    MEM(
+                     BINOP(PLUS,
+                      TEMP t100,
+                      CONST -12)))),
+                 ESEQ(
+                  MOVE(
+                   TEMP t102,
+                   BINOP(PLUS,
+                    TEMP t102,
+                    CONST 12)),
+                  TEMP t149)))),
+             ESEQ(
+              MOVE(
+               TEMP t102,
+               BINOP(PLUS,
+                TEMP t102,
+                CONST 8)),
+              TEMP t150)))))))))))))
+-------====IR tree=====-----
+IR tree for function printlist:
+ MOVE(
+  TEMP t108,
+  ESEQ(
+   SEQ(
+    CJUMP(EQ,
+     MEM(
+      BINOP(PLUS,
+       TEMP t100,
+       CONST 12)),
+     CONST 0,
+     L45,L46),
+    SEQ(
+     LABEL L45,
+     SEQ(
+      EXP(
+       ESEQ(
+        MOVE(
+         TEMP t143,
+         CALL(
+          NAME print,
+           NAME L43)),
+        ESEQ(
+         MOVE(
+          TEMP t102,
+          BINOP(PLUS,
+           TEMP t102,
+           CONST 4)),
+         TEMP t143))),
+      SEQ(
+       JUMP(
+        NAME L47),
+       SEQ(
+        LABEL L46,
+        SEQ(
+         EXP(
+          ESEQ(
+           MOVE(
+            TEMP t144,
+            CALL(
+             NAME printint,
+              MEM(
+               BINOP(PLUS,
+                TEMP t100,
+                CONST 8)),
+              MEM(
+               BINOP(PLUS,
+                MEM(
+                 BINOP(PLUS,
+                  TEMP t100,
+                  CONST 12)),
+                CONST 0)))),
+           ESEQ(
+            MOVE(
+             TEMP t102,
+             BINOP(PLUS,
+              TEMP t102,
+              CONST 8)),
+            ESEQ(
+             EXP(
+              TEMP t144),
+             ESEQ(
+              MOVE(
+               TEMP t145,
+               CALL(
+                NAME print,
+                 NAME L44)),
+              ESEQ(
+               MOVE(
+                TEMP t102,
+                BINOP(PLUS,
+                 TEMP t102,
+                 CONST 4)),
+               ESEQ(
+                EXP(
+                 TEMP t145),
+                ESEQ(
+                 MOVE(
+                  TEMP t146,
+                  CALL(
+                   NAME printlist,
+                    MEM(
+                     BINOP(PLUS,
+                      TEMP t100,
+                      CONST 8)),
+                    MEM(
+                     BINOP(PLUS,
+                      MEM(
+                       BINOP(PLUS,
+                        TEMP t100,
+                        CONST 12)),
+                      CONST 4)))),
+                 ESEQ(
+                  MOVE(
+                   TEMP t102,
+                   BINOP(PLUS,
+                    TEMP t102,
+                    CONST 8)),
+                  TEMP t146))))))))),
+         SEQ(
+          JUMP(
+           NAME L47),
+          LABEL L47))))))),
+   CONST 0))
+-------====IR tree=====-----
+IR tree for function printint:
+ MOVE(
+  TEMP t108,
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    SEQ(
+     CJUMP(LT,
+      MEM(
+       BINOP(PLUS,
+        TEMP t100,
+        CONST 12)),
+      CONST 0,
+      L40,L41),
+     SEQ(
+      LABEL L40,
+      SEQ(
+       EXP(
+        ESEQ(
+         MOVE(
+          TEMP t139,
+          CALL(
+           NAME print,
+            NAME L35)),
+         ESEQ(
+          MOVE(
+           TEMP t102,
+           BINOP(PLUS,
+            TEMP t102,
+            CONST 4)),
+          ESEQ(
+           EXP(
+            TEMP t139),
+           ESEQ(
+            MOVE(
+             TEMP t140,
+             CALL(
+              NAME f,
+               TEMP t100,
+               BINOP(MINUS,
+                CONST 0,
+                MEM(
+                 BINOP(PLUS,
+                  TEMP t100,
+                  CONST 12))))),
+            ESEQ(
+             MOVE(
+              TEMP t102,
+              BINOP(PLUS,
+               TEMP t102,
+               CONST 8)),
+             TEMP t140)))))),
+       SEQ(
+        JUMP(
+         NAME L42),
+        SEQ(
+         LABEL L41,
+         SEQ(
+          SEQ(
+           CJUMP(GT,
+            MEM(
+             BINOP(PLUS,
+              TEMP t100,
+              CONST 12)),
+            CONST 0,
+            L37,L38),
+           SEQ(
+            LABEL L37,
+            SEQ(
+             EXP(
+              ESEQ(
+               MOVE(
+                TEMP t141,
+                CALL(
+                 NAME f,
+                  TEMP t100,
+                  MEM(
+                   BINOP(PLUS,
+                    TEMP t100,
+                    CONST 12)))),
+               ESEQ(
+                MOVE(
+                 TEMP t102,
+                 BINOP(PLUS,
+                  TEMP t102,
+                  CONST 8)),
+                TEMP t141))),
+             SEQ(
+              JUMP(
+               NAME L39),
+              SEQ(
+               LABEL L38,
+               SEQ(
+                EXP(
+                 ESEQ(
+                  MOVE(
+                   TEMP t142,
+                   CALL(
+                    NAME print,
+                     NAME L36)),
+                  ESEQ(
+                   MOVE(
+                    TEMP t102,
+                    BINOP(PLUS,
+                     TEMP t102,
+                     CONST 4)),
+                   TEMP t142))),
+                SEQ(
+                 JUMP(
+                  NAME L39),
+                 LABEL L39))))))),
+          SEQ(
+           JUMP(
+            NAME L42),
+           LABEL L42))))))),
+    CONST 0)))
+-------====IR tree=====-----
+IR tree for function f:
+ MOVE(
+  TEMP t108,
+  ESEQ(
+   SEQ(
+    CJUMP(GT,
+     MEM(
+      BINOP(PLUS,
+       TEMP t100,
+       CONST 12)),
+     CONST 0,
+     L32,L34),
+    SEQ(
+     LABEL L32,
+     SEQ(
+      EXP(
+       ESEQ(
+        MOVE(
+         TEMP t135,
+         CALL(
+          NAME f,
+           MEM(
+            BINOP(PLUS,
+             TEMP t100,
+             CONST 8)),
+           BINOP(DIVIDE,
+            MEM(
+             BINOP(PLUS,
+              TEMP t100,
+              CONST 12)),
+            CONST 10))),
+        ESEQ(
+         MOVE(
+          TEMP t102,
+          BINOP(PLUS,
+           TEMP t102,
+           CONST 8)),
+         ESEQ(
+          EXP(
+           TEMP t135),
+          ESEQ(
+           MOVE(
+            TEMP t138,
+            CALL(
+             NAME print,
+              ESEQ(
+               MOVE(
+                TEMP t137,
+                CALL(
+                 NAME chr,
+                  BINOP(PLUS,
+                   BINOP(MINUS,
+                    MEM(
+                     BINOP(PLUS,
+                      TEMP t100,
+                      CONST 12)),
+                    BINOP(TIMES,
+                     BINOP(DIVIDE,
+                      MEM(
+                       BINOP(PLUS,
+                        TEMP t100,
+                        CONST 12)),
+                      CONST 10),
+                     CONST 10)),
+                   ESEQ(
+                    MOVE(
+                     TEMP t136,
+                     CALL(
+                      NAME ord,
+                       NAME L31)),
+                    ESEQ(
+                     MOVE(
+                      TEMP t102,
+                      BINOP(PLUS,
+                       TEMP t102,
+                       CONST 4)),
+                     TEMP t136))))),
+               ESEQ(
+                MOVE(
+                 TEMP t102,
+                 BINOP(PLUS,
+                  TEMP t102,
+                  CONST 4)),
+                TEMP t137)))),
+           ESEQ(
+            MOVE(
+             TEMP t102,
+             BINOP(PLUS,
+              TEMP t102,
+              CONST 4)),
+            TEMP t138)))))),
+      SEQ(
+       JUMP(
+        NAME L34),
+       LABEL L34)))),
+   CONST 0))
+-------====IR tree=====-----
+IR tree for function merge:
+ MOVE(
+  TEMP t108,
+  ESEQ(
+   CJUMP(EQ,
+    MEM(
+     BINOP(PLUS,
+      TEMP t100,
+      CONST 12)),
+    CONST 0,
+    L28,L29),
+   ESEQ(
+    LABEL L28,
+    ESEQ(
+     MOVE(
+      TEMP t134,
+      MEM(
+       BINOP(PLUS,
+        TEMP t100,
+        CONST 16))),
+     ESEQ(
+      JUMP(
+       NAME L30),
+      ESEQ(
+       LABEL L29,
+       ESEQ(
+        MOVE(
+         TEMP t134,
+         ESEQ(
+          CJUMP(EQ,
+           MEM(
+            BINOP(PLUS,
+             TEMP t100,
+             CONST 16)),
+           CONST 0,
+           L25,L26),
+          ESEQ(
+           LABEL L25,
+           ESEQ(
+            MOVE(
+             TEMP t133,
+             MEM(
+              BINOP(PLUS,
+               TEMP t100,
+               CONST 12))),
+            ESEQ(
+             JUMP(
+              NAME L27),
+             ESEQ(
+              LABEL L26,
+              ESEQ(
+               MOVE(
+                TEMP t133,
+                ESEQ(
+                 CJUMP(LT,
+                  MEM(
+                   BINOP(PLUS,
+                    MEM(
+                     BINOP(PLUS,
+                      TEMP t100,
+                      CONST 12)),
+                    CONST 0)),
+                  MEM(
+                   BINOP(PLUS,
+                    MEM(
+                     BINOP(PLUS,
+                      TEMP t100,
+                      CONST 16)),
+                    CONST 0)),
+                  L22,L23),
+                 ESEQ(
+                  LABEL L22,
+                  ESEQ(
+                   MOVE(
+                    TEMP t132,
+                    ESEQ(
+                     SEQ(
+                      MOVE(
+                       TEMP t127,
+                       ESEQ(
+                        MOVE(
+                         TEMP t128,
+                         CALL(
+                          NAME allocRecord,
+                           CONST 2)),
+                        ESEQ(
+                         MOVE(
+                          TEMP t102,
+                          BINOP(PLUS,
+                           TEMP t102,
+                           CONST 4)),
+                         TEMP t128))),
+                      SEQ(
+                       MOVE(
+                        MEM(
+                         BINOP(PLUS,
+                          TEMP t127,
+                          CONST 4)),
+                        ESEQ(
+                         MOVE(
+                          TEMP t126,
+                          CALL(
+                           NAME merge,
+                            MEM(
+                             BINOP(PLUS,
+                              TEMP t100,
+                              CONST 8)),
+                            MEM(
+                             BINOP(PLUS,
+                              MEM(
+                               BINOP(PLUS,
+                                TEMP t100,
+                                CONST 12)),
+                              CONST 4)),
+                            MEM(
+                             BINOP(PLUS,
+                              TEMP t100,
+                              CONST 16)))),
+                         ESEQ(
+                          MOVE(
+                           TEMP t102,
+                           BINOP(PLUS,
+                            TEMP t102,
+                            CONST 12)),
+                          TEMP t126))),
+                       MOVE(
+                        MEM(
+                         BINOP(PLUS,
+                          TEMP t127,
+                          CONST 0)),
+                        MEM(
+                         BINOP(PLUS,
+                          MEM(
+                           BINOP(PLUS,
+                            TEMP t100,
+                            CONST 12)),
+                          CONST 0))))),
+                     TEMP t127)),
+                   ESEQ(
+                    JUMP(
+                     NAME L24),
+                    ESEQ(
+                     LABEL L23,
+                     ESEQ(
+                      MOVE(
+                       TEMP t132,
+                       ESEQ(
+                        SEQ(
+                         MOVE(
+                          TEMP t130,
+                          ESEQ(
+                           MOVE(
+                            TEMP t131,
+                            CALL(
+                             NAME allocRecord,
+                              CONST 2)),
+                           ESEQ(
+                            MOVE(
+                             TEMP t102,
+                             BINOP(PLUS,
+                              TEMP t102,
+                              CONST 4)),
+                            TEMP t131))),
+                         SEQ(
+                          MOVE(
+                           MEM(
+                            BINOP(PLUS,
+                             TEMP t130,
+                             CONST 4)),
+                           ESEQ(
+                            MOVE(
+                             TEMP t129,
+                             CALL(
+                              NAME merge,
+                               MEM(
+                                BINOP(PLUS,
+                                 TEMP t100,
+                                 CONST 8)),
+                               MEM(
+                                BINOP(PLUS,
+                                 TEMP t100,
+                                 CONST 12)),
+                               MEM(
+                                BINOP(PLUS,
+                                 MEM(
+                                  BINOP(PLUS,
+                                   TEMP t100,
+                                   CONST 16)),
+                                 CONST 4)))),
+                            ESEQ(
+                             MOVE(
+                              TEMP t102,
+                              BINOP(PLUS,
+                               TEMP t102,
+                               CONST 12)),
+                             TEMP t129))),
+                          MOVE(
+                           MEM(
+                            BINOP(PLUS,
+                             TEMP t130,
+                             CONST 0)),
+                           MEM(
+                            BINOP(PLUS,
+                             MEM(
+                              BINOP(PLUS,
+                               TEMP t100,
+                               CONST 16)),
+                             CONST 0))))),
+                        TEMP t130)),
+                      ESEQ(
+                       JUMP(
+                        NAME L24),
+                       ESEQ(
+                        LABEL L24,
+                        TEMP t132))))))))),
+               ESEQ(
+                JUMP(
+                 NAME L27),
+                ESEQ(
+                 LABEL L27,
+                 TEMP t133))))))))),
+        ESEQ(
+         JUMP(
+          NAME L30),
+         ESEQ(
+          LABEL L30,
+          TEMP t134)))))))))
+-------====IR tree=====-----
+IR tree for function readlist:
+ MOVE(
+  TEMP t108,
+  ESEQ(
+   MOVE(
+    MEM(
+     BINOP(PLUS,
+      TEMP t100,
+      CONST -4)),
+    ESEQ(
+     SEQ(
+      MOVE(
+       TEMP t119,
+       ESEQ(
+        MOVE(
+         TEMP t120,
+         CALL(
+          NAME allocRecord,
+           CONST 1)),
+        ESEQ(
+         MOVE(
+          TEMP t102,
+          BINOP(PLUS,
+           TEMP t102,
+           CONST 4)),
+         TEMP t120))),
+      MOVE(
+       MEM(
+        BINOP(PLUS,
+         TEMP t119,
+         CONST 0)),
+       CONST 0)),
+     TEMP t119)),
+   ESEQ(
+    EXP(
+     CONST 0),
+    ESEQ(
+     MOVE(
+      MEM(
+       BINOP(PLUS,
+        TEMP t100,
+        CONST -8)),
+      ESEQ(
+       MOVE(
+        TEMP t121,
+        CALL(
+         NAME readint,
+          MEM(
+           BINOP(PLUS,
+            TEMP t100,
+            CONST 8)),
+          MEM(
+           BINOP(PLUS,
+            TEMP t100,
+            CONST -4)))),
+       ESEQ(
+        MOVE(
+         TEMP t102,
+         BINOP(PLUS,
+          TEMP t102,
+          CONST 8)),
+        TEMP t121))),
+     ESEQ(
+      EXP(
+       CONST 0),
+      ESEQ(
+       CJUMP(NE,
+        MEM(
+         BINOP(PLUS,
+          MEM(
+           BINOP(PLUS,
+            TEMP t100,
+            CONST -4)),
+          CONST 0)),
+        CONST 0,
+        L19,L20),
+       ESEQ(
+        LABEL L19,
+        ESEQ(
+         MOVE(
+          TEMP t125,
+          ESEQ(
+           SEQ(
+            MOVE(
+             TEMP t123,
+             ESEQ(
+              MOVE(
+               TEMP t124,
+               CALL(
+                NAME allocRecord,
+                 CONST 2)),
+              ESEQ(
+               MOVE(
+                TEMP t102,
+                BINOP(PLUS,
+                 TEMP t102,
+                 CONST 4)),
+               TEMP t124))),
+            SEQ(
+             MOVE(
+              MEM(
+               BINOP(PLUS,
+                TEMP t123,
+                CONST 4)),
+              ESEQ(
+               MOVE(
+                TEMP t122,
+                CALL(
+                 NAME readlist,
+                  MEM(
+                   BINOP(PLUS,
+                    TEMP t100,
+                    CONST 8)))),
+               ESEQ(
+                MOVE(
+                 TEMP t102,
+                 BINOP(PLUS,
+                  TEMP t102,
+                  CONST 4)),
+                TEMP t122))),
+             MOVE(
+              MEM(
+               BINOP(PLUS,
+                TEMP t123,
+                CONST 0)),
+              MEM(
+               BINOP(PLUS,
+                TEMP t100,
+                CONST -8))))),
+           TEMP t123)),
+         ESEQ(
+          JUMP(
+           NAME L21),
+          ESEQ(
+           LABEL L20,
+           ESEQ(
+            MOVE(
+             TEMP t125,
+             CONST 0),
+            ESEQ(
+             JUMP(
+              NAME L21),
+             ESEQ(
+              LABEL L21,
+              TEMP t125)))))))))))))
+-------====IR tree=====-----
+IR tree for function readint:
+ MOVE(
+  TEMP t108,
+  ESEQ(
+   MOVE(
+    MEM(
+     BINOP(PLUS,
+      TEMP t100,
+      CONST -4)),
+    CONST 0),
+   ESEQ(
+    EXP(
+     CONST 0),
+    ESEQ(
+     EXP(
+      CONST 0),
+     ESEQ(
+      MOVE(
+       TEMP t113,
+       CALL(
+        NAME skipto,
+         TEMP t100)),
+      ESEQ(
+       MOVE(
+        TEMP t102,
+        BINOP(PLUS,
+         TEMP t102,
+         CONST 4)),
+       ESEQ(
+        EXP(
+         TEMP t113),
+        ESEQ(
+         MOVE(
+          MEM(
+           BINOP(PLUS,
+            MEM(
+             BINOP(PLUS,
+              TEMP t100,
+              CONST 12)),
+            CONST 0)),
+          ESEQ(
+           MOVE(
+            TEMP t114,
+            CALL(
+             NAME isdigit,
+              TEMP t100,
+              MEM(
+               BINOP(PLUS,
+                MEM(
+                 BINOP(PLUS,
+                  TEMP t100,
+                  CONST 8)),
+                CONST -4)))),
+           ESEQ(
+            MOVE(
+             TEMP t102,
+             BINOP(PLUS,
+              TEMP t102,
+              CONST 8)),
+            TEMP t114))),
+         ESEQ(
+          EXP(
+           CONST 0),
+          ESEQ(
+           SEQ(
+            LABEL L17,
+            SEQ(
+             MOVE(
+              TEMP t118,
+              ESEQ(
+               MOVE(
+                TEMP t115,
+                CALL(
+                 NAME isdigit,
+                  TEMP t100,
+                  MEM(
+                   BINOP(PLUS,
+                    MEM(
+                     BINOP(PLUS,
+                      TEMP t100,
+                      CONST 8)),
+                    CONST -4)))),
+               ESEQ(
+                MOVE(
+                 TEMP t102,
+                 BINOP(PLUS,
+                  TEMP t102,
+                  CONST 8)),
+                TEMP t115))),
+             SEQ(
+              CJUMP(EQ,
+               TEMP t118,
+               CONST 0,
+               L15,L18),
+              SEQ(
+               LABEL L18,
+               SEQ(
+                EXP(
+                 ESEQ(
+                  MOVE(
+                   MEM(
+                    BINOP(PLUS,
+                     TEMP t100,
+                     CONST -4)),
+                   BINOP(MINUS,
+                    BINOP(PLUS,
+                     BINOP(TIMES,
+                      MEM(
+                       BINOP(PLUS,
+                        TEMP t100,
+                        CONST -4)),
+                      CONST 10),
+                     ESEQ(
+                      MOVE(
+                       TEMP t116,
+                       CALL(
+                        NAME ord,
+                         MEM(
+                          BINOP(PLUS,
+                           MEM(
+                            BINOP(PLUS,
+                             TEMP t100,
+                             CONST 8)),
+                           CONST -4)))),
+                      ESEQ(
+                       MOVE(
+                        TEMP t102,
+                        BINOP(PLUS,
+                         TEMP t102,
+                         CONST 4)),
+                       TEMP t116))),
+                    ESEQ(
+                     MOVE(
+                      TEMP t117,
+                      CALL(
+                       NAME ord,
+                        NAME L16)),
+                     ESEQ(
+                      MOVE(
+                       TEMP t102,
+                       BINOP(PLUS,
+                        TEMP t102,
+                        CONST 4)),
+                      TEMP t117)))),
+                  ESEQ(
+                   EXP(
+                    CONST 0),
+                   ESEQ(
+                    MOVE(
+                     MEM(
+                      BINOP(PLUS,
+                       MEM(
+                        BINOP(PLUS,
+                         TEMP t100,
+                         CONST 8)),
+                       CONST -4)),
+                     CALL(
+                      NAME getchar)),
+                    CONST 0)))),
+                SEQ(
+                 JUMP(
+                  NAME L17),
+                 LABEL L15)))))),
+           ESEQ(
+            EXP(
+             CONST 0),
+            MEM(
+             BINOP(PLUS,
+              TEMP t100,
+              CONST -4)))))))))))))
+-------====IR tree=====-----
+IR tree for function skipto:
+ MOVE(
+  TEMP t108,
+  ESEQ(
+   SEQ(
+    LABEL L13,
+    SEQ(
+     MOVE(
+      TEMP t112,
+      ESEQ(
+       CJUMP(NE,
+        ESEQ(
+         MOVE(
+          TEMP t109,
+          CALL(
+           NAME stringEqual,
+            MEM(
+             BINOP(PLUS,
+              MEM(
+               BINOP(PLUS,
+                MEM(
+                 BINOP(PLUS,
+                  TEMP t100,
+                  CONST 8)),
+                CONST 8)),
+              CONST -4)),
+            NAME L7)),
+         ESEQ(
+          MOVE(
+           TEMP t102,
+           BINOP(PLUS,
+            TEMP t102,
+            CONST 8)),
+          TEMP t109)),
+        CONST 0,
+        L9,L10),
+       ESEQ(
+        LABEL L9,
+        ESEQ(
+         MOVE(
+          TEMP t111,
+          CONST 1),
+         ESEQ(
+          JUMP(
+           NAME L11),
+          ESEQ(
+           LABEL L10,
+           ESEQ(
+            MOVE(
+             TEMP t111,
+             ESEQ(
+              MOVE(
+               TEMP t110,
+               CALL(
+                NAME stringEqual,
+                 MEM(
+                  BINOP(PLUS,
+                   MEM(
+                    BINOP(PLUS,
+                     MEM(
+                      BINOP(PLUS,
+                       TEMP t100,
+                       CONST 8)),
+                     CONST 8)),
+                   CONST -4)),
+                 NAME L8)),
+              ESEQ(
+               MOVE(
+                TEMP t102,
+                BINOP(PLUS,
+                 TEMP t102,
+                 CONST 8)),
+               TEMP t110))),
+            ESEQ(
+             JUMP(
+              NAME L11),
+             ESEQ(
+              LABEL L11,
+              TEMP t111))))))))),
+     SEQ(
+      CJUMP(EQ,
+       TEMP t112,
+       CONST 0,
+       L12,L14),
+      SEQ(
+       LABEL L14,
+       SEQ(
+        MOVE(
+         MEM(
+          BINOP(PLUS,
+           MEM(
+            BINOP(PLUS,
+             MEM(
+              BINOP(PLUS,
+               TEMP t100,
+               CONST 8)),
+             CONST 8)),
+           CONST -4)),
+         CALL(
+          NAME getchar)),
+        SEQ(
+         JUMP(
+          NAME L13),
+         LABEL L12)))))),
+   CONST 0))
+-------====IR tree=====-----
+IR tree for function isdigit:
+ MOVE(
+  TEMP t108,
+  ESEQ(
+   CJUMP(GE,
+    ESEQ(
+     MOVE(
+      TEMP t101,
+      CALL(
+       NAME ord,
+        MEM(
+         BINOP(PLUS,
+          MEM(
+           BINOP(PLUS,
+            MEM(
+             BINOP(PLUS,
+              TEMP t100,
+              CONST 8)),
+            CONST 8)),
+          CONST -4)))),
+     ESEQ(
+      MOVE(
+       TEMP t102,
+       BINOP(PLUS,
+        TEMP t102,
+        CONST 4)),
+      TEMP t101)),
+    ESEQ(
+     MOVE(
+      TEMP t103,
+      CALL(
+       NAME ord,
+        NAME L0)),
+     ESEQ(
+      MOVE(
+       TEMP t102,
+       BINOP(PLUS,
+        TEMP t102,
+        CONST 4)),
+      TEMP t103)),
+    L4,L5),
+   ESEQ(
+    LABEL L4,
+    ESEQ(
+     MOVE(
+      TEMP t107,
+      ESEQ(
+       MOVE(
+        TEMP t106,
+        CONST 1),
+       ESEQ(
+        CJUMP(LE,
+         ESEQ(
+          MOVE(
+           TEMP t104,
+           CALL(
+            NAME ord,
+             MEM(
+              BINOP(PLUS,
+               MEM(
+                BINOP(PLUS,
+                 MEM(
+                  BINOP(PLUS,
+                   TEMP t100,
+                   CONST 8)),
+                 CONST 8)),
+               CONST -4)))),
+          ESEQ(
+           MOVE(
+            TEMP t102,
+            BINOP(PLUS,
+             TEMP t102,
+             CONST 4)),
+           TEMP t104)),
+         ESEQ(
+          MOVE(
+           TEMP t105,
+           CALL(
+            NAME ord,
+             NAME L1)),
+          ESEQ(
+           MOVE(
+            TEMP t102,
+            BINOP(PLUS,
+             TEMP t102,
+             CONST 4)),
+           TEMP t105)),
+         L2,L3),
+        ESEQ(
+         LABEL L3,
+         ESEQ(
+          MOVE(
+           TEMP t106,
+           CONST 0),
+          ESEQ(
+           LABEL L2,
+           TEMP t106)))))),
+     ESEQ(
+      JUMP(
+       NAME L6),
+      ESEQ(
+       LABEL L5,
+       ESEQ(
+        MOVE(
+         TEMP t107,
+         CONST 0),
+        ESEQ(
+         JUMP(
+          NAME L6),
+         ESEQ(
+          LABEL L6,
+          TEMP t107)))))))))
+-------====IR tree=====-----

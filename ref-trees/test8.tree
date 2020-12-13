@@ -1,0 +1,30 @@
+IR tree for function tigermain:
+ MOVE(
+  TEMP t101,
+  ESEQ(
+   CJUMP(GT,
+    CONST 10,
+    CONST 20,
+    L0,L1),
+   ESEQ(
+    LABEL L0,
+    ESEQ(
+     MOVE(
+      TEMP t100,
+      CONST 30),
+     ESEQ(
+      JUMP(
+       NAME L2),
+      ESEQ(
+       LABEL L1,
+       ESEQ(
+        MOVE(
+         TEMP t100,
+         CONST 40),
+        ESEQ(
+         JUMP(
+          NAME L2),
+         ESEQ(
+          LABEL L2,
+          TEMP t100)))))))))
+-------====IR tree=====-----

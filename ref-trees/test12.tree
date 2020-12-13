@@ -1,0 +1,139 @@
+IR tree for function tigermain:
+ MOVE(
+  TEMP t104,
+  ESEQ(
+   MOVE(
+    MEM(
+     BINOP(PLUS,
+      TEMP t100,
+      CONST -4)),
+    CONST 0),
+   ESEQ(
+    EXP(
+     CONST 0),
+    ESEQ(
+     MOVE(
+      MEM(
+       BINOP(PLUS,
+        TEMP t100,
+        CONST -12)),
+      CONST 0),
+     ESEQ(
+      EXP(
+       CONST 0),
+      ESEQ(
+       MOVE(
+        MEM(
+         BINOP(PLUS,
+          TEMP t100,
+          CONST -16)),
+        CONST 100),
+       ESEQ(
+        EXP(
+         CONST 0),
+        ESEQ(
+         SEQ(
+          LABEL L6,
+          SEQ(
+           MOVE(
+            TEMP t103,
+            ESEQ(
+             CJUMP(LE,
+              MEM(
+               BINOP(PLUS,
+                TEMP t100,
+                CONST -12)),
+              MEM(
+               BINOP(PLUS,
+                TEMP t100,
+                CONST -16)),
+              L2,L3),
+             ESEQ(
+              LABEL L2,
+              ESEQ(
+               MOVE(
+                TEMP t102,
+                ESEQ(
+                 MOVE(
+                  TEMP t101,
+                  CONST 1),
+                 ESEQ(
+                  CJUMP(LT,
+                   MEM(
+                    BINOP(PLUS,
+                     TEMP t100,
+                     CONST -12)),
+                   BINOP(PLUS,
+                    MEM(
+                     BINOP(PLUS,
+                      TEMP t100,
+                      CONST -16)),
+                    CONST 1),
+                   L0,L1),
+                  ESEQ(
+                   LABEL L1,
+                   ESEQ(
+                    MOVE(
+                     TEMP t101,
+                     CONST 0),
+                    ESEQ(
+                     LABEL L0,
+                     TEMP t101)))))),
+               ESEQ(
+                JUMP(
+                 NAME L4),
+                ESEQ(
+                 LABEL L3,
+                 ESEQ(
+                  MOVE(
+                   TEMP t102,
+                   CONST 0),
+                  ESEQ(
+                   JUMP(
+                    NAME L4),
+                   ESEQ(
+                    LABEL L4,
+                    TEMP t102))))))))),
+           SEQ(
+            CJUMP(EQ,
+             TEMP t103,
+             CONST 0,
+             L5,L7),
+            SEQ(
+             LABEL L7,
+             SEQ(
+              EXP(
+               ESEQ(
+                MOVE(
+                 MEM(
+                  BINOP(PLUS,
+                   TEMP t100,
+                   CONST -4)),
+                 BINOP(PLUS,
+                  MEM(
+                   BINOP(PLUS,
+                    TEMP t100,
+                    CONST -4)),
+                  CONST 1)),
+                ESEQ(
+                 EXP(
+                  CONST 0),
+                 ESEQ(
+                  MOVE(
+                   MEM(
+                    BINOP(PLUS,
+                     TEMP t100,
+                     CONST -12)),
+                   BINOP(PLUS,
+                    MEM(
+                     BINOP(PLUS,
+                      TEMP t100,
+                      CONST -12)),
+                    CONST 1)),
+                  CONST 0)))),
+              SEQ(
+               JUMP(
+                NAME L6),
+               LABEL L5)))))),
+         CONST 0))))))))
+-------====IR tree=====-----

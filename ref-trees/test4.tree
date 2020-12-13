@@ -1,0 +1,80 @@
+IR tree for function tigermain:
+ MOVE(
+  TEMP t104,
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    MOVE(
+     TEMP t105,
+     CALL(
+      NAME nfactor,
+       TEMP t100,
+       CONST 10)),
+    ESEQ(
+     MOVE(
+      TEMP t102,
+      BINOP(PLUS,
+       TEMP t102,
+       CONST 8)),
+     TEMP t105))))
+-------====IR tree=====-----
+IR tree for function nfactor:
+ MOVE(
+  TEMP t104,
+  ESEQ(
+   CJUMP(EQ,
+    MEM(
+     BINOP(PLUS,
+      TEMP t100,
+      CONST 12)),
+    CONST 0,
+    L0,L1),
+   ESEQ(
+    LABEL L0,
+    ESEQ(
+     MOVE(
+      TEMP t103,
+      CONST 1),
+     ESEQ(
+      JUMP(
+       NAME L2),
+      ESEQ(
+       LABEL L1,
+       ESEQ(
+        MOVE(
+         TEMP t103,
+         BINOP(TIMES,
+          MEM(
+           BINOP(PLUS,
+            TEMP t100,
+            CONST 12)),
+          ESEQ(
+           MOVE(
+            TEMP t101,
+            CALL(
+             NAME nfactor,
+              MEM(
+               BINOP(PLUS,
+                TEMP t100,
+                CONST 8)),
+              BINOP(MINUS,
+               MEM(
+                BINOP(PLUS,
+                 TEMP t100,
+                 CONST 12)),
+               CONST 1))),
+           ESEQ(
+            MOVE(
+             TEMP t102,
+             BINOP(PLUS,
+              TEMP t102,
+              CONST 8)),
+            TEMP t101)))),
+        ESEQ(
+         JUMP(
+          NAME L2),
+         ESEQ(
+          LABEL L2,
+          TEMP t103)))))))))
+-------====IR tree=====-----

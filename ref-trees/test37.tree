@@ -1,0 +1,25 @@
+IR tree for function tigermain:
+ MOVE(
+  TEMP t101,
+  ESEQ(
+   MOVE(
+    MEM(
+     BINOP(PLUS,
+      TEMP t100,
+      CONST -4)),
+    CONST 0),
+   ESEQ(
+    EXP(
+     CONST 0),
+    ESEQ(
+     MOVE(
+      MEM(
+       BINOP(PLUS,
+        TEMP t100,
+        CONST -8)),
+      NAME L0),
+     ESEQ(
+      EXP(
+       CONST 0),
+      CONST 0)))))
+-------====IR tree=====-----

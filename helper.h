@@ -84,4 +84,9 @@
 #define get_func_res(x) (x->u.fun.result)
 #define get_func_tylist(x) (x->u.fun.formals)
 
+//------------------ lab5 ----------------------
+#define get_var_access(x) (x->u.var.access)
+#define get_func_label(x) (x->u.fun.label)
+#define get_func_level(x) (x->u.fun.level)
+
 #endif

@@ -7,6 +7,8 @@
  * Linked list types end with "..list"
  */
 
+#include "symbol.h"
+
 /* Type Definitions */
 
 typedef int A_pos;
@@ -43,15 +45,12 @@ typedef enum {
 struct A_var_ {
     enum { A_simpleVar, A_fieldVar, A_subscriptVar } kind;
     A_pos pos;
-
     union {
         S_symbol simple;
-
         struct {
             A_var var;
             S_symbol sym;
         } field;
-
         struct {
             A_var var;
             A_exp exp;
@@ -77,9 +76,7 @@ struct A_exp_ {
         A_letExp,
         A_arrayExp
     } kind;
-
     A_pos pos;
-
     union {
         A_var var;
         /* nil; - needs only the pos */
@@ -129,7 +126,6 @@ struct A_exp_ {
 struct A_dec_ {
     enum { A_functionDec, A_varDec, A_typeDec } kind;
     A_pos pos;
-
     union {
         A_fundecList function;
         /* escape may change after the initial declaration */
@@ -146,7 +142,6 @@ struct A_dec_ {
 struct A_ty_ {
     enum { A_nameTy, A_recordTy, A_arrayTy } kind;
     A_pos pos;
-
     union {
         S_symbol name;
         A_fieldList record;
