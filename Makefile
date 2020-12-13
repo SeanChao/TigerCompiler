@@ -1,44 +1,30 @@
-a.out: parse.o prabsyn.o y.tab.o lex.yy.o errormsg.o util.o table.o absyn.o symbol.o semant.o types.o env.o
-	gcc -g parse.o prabsyn.o y.tab.o lex.yy.o errormsg.o util.o table.o absyn.o symbol.o semant.o types.o env.o
+CC=gcc
+CFLAGS=-g -c -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast 
 
-parse.o: parse.c errormsg.h util.h
-	gcc -g -c parse.c
+tiger-compiler:  main.o y.tab.o lex.yy.o errormsg.o absyn.o prabsyn.o symbol.o translate.o semant.o parse.o escape.o frame.o table.o util.o types.o env.o tree.o temp.o printtree.o canon.o codegen.o assem.o graph.o flowgraph.o liveness.o color.o regalloc.o
+	$(CC) -g $^ -o $@
 
-prabsyn.o: prabsyn.c prabsyn.h
-	gcc -g -c prabsyn.c
-semant.o: semant.c semant.h
-	gcc -g -c semant.c
-env.o: env.c env.h
-	gcc -g -c env.c
-types.o: types.c types.h
-	gcc -g -c types.c
+frame.o: x86frame.c
+	cc $(CFLAGS) $< -o $@
+
 y.tab.o: y.tab.c
-	gcc -g -c y.tab.c
+	cc $(CFLAGS) $<
 
 y.tab.c: tiger.y
 	yacc -dv tiger.y
 
 y.tab.h: y.tab.c
+	echo "y.tab.h was created at the same time as y.tab.c"
 
-errormsg.o: errormsg.c errormsg.h util.h
-	gcc -g -c errormsg.c
-
-lex.yy.o: lex.yy.c symbol.h absyn.h y.tab.h errormsg.h util.h
-	gcc -g -c lex.yy.c
+lex.yy.o: lex.yy.c
+	cc $(CFLAGS) $<
 
 lex.yy.c: tiger.lex
 	lex tiger.lex
 
-util.o: util.c util.h
-	gcc -g -c util.c
-table.o: table.c table.h
-	gcc -g -c table.c
-absyn.o: absyn.h absyn.c
-	gcc -g -c absyn.c
-symbol.o: symbol.c symbol.h
-	gcc -g -c symbol.c
-
 handin:
-	tar -czf id.name.tar.gz  absyn.[ch] errormsg.[ch] makefile gradeMe.sh parse.[ch] prabsyn.[ch] refs-4 symbol.[ch] table.[ch] testcases tiger.lex tiger.y util.[ch] env.[ch] semant.[ch] *.h *.c 
+	tar -czf id.tar.gz *.h *.c *.lex *.y 
+
 clean: 
-	rm -f a.out parse.o prabsyn.o y.tab.o lex.yy.o errormsg.o util.o table.o absyn.o symbol.o semant.o types.o env.o y.tab.c y.tab.h lex.yy.c y.output *~
+	rm -f tiger-compiler *.o y.tab.c y.tab.h y.output lex.yy.c
+

@@ -1,5 +1,5 @@
-#ifndef _HELPER_H_
-#define _HELPER_H_
+#ifndef HELPER_H_
+#define HELPER_H_
 
 // a: A_exp
 // opExp

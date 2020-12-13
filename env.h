@@ -1,7 +1,7 @@
 /*Lab4: Your implementation of lab4*/
 
-#ifndef __ENV_H_
-#define __ENV_H_
+#ifndef ENV_H_
+#define ENV_H_
 
 #include "temp.h"
 #include "translate.h"

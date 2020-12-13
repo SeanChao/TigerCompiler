@@ -35,7 +35,7 @@ Tr_access Tr_allocLocal(Tr_level level, bool escape);
 /* Expressions */
 Tr_exp Tr_SimpleVar(Tr_access, Tr_level);
 Tr_exp Tr_fieldVar(Tr_exp rec, int nField);
-Tr_exp Tr_subscriptVar(Tr_exp array, Tr_exp index) ;
+Tr_exp Tr_subscriptVar(Tr_exp array, Tr_exp index);
 Tr_exp Tr_intExp(int val);
 Tr_exp Tr_nilExp();
 Tr_exp Tr_stringExp(string str);
@@ -45,7 +45,7 @@ Tr_exp Tr_RecordExp(Tr_expList recList);
 Tr_exp Tr_SeqExp(Tr_exp head, Tr_exp tail);
 Tr_exp Tr_EseqExp(Tr_exp list, Tr_exp newChild);
 Tr_exp Tr_assignExp(Tr_exp var, Tr_exp val);
-Tr_exp Tr_ifThenExp(Tr_exp condTr, Tr_exp thenTr) ;
+Tr_exp Tr_ifThenExp(Tr_exp condTr, Tr_exp thenTr);
 Tr_exp Tr_ifThenElseExp(Tr_exp condTr, Tr_exp thenTr, Tr_exp elseTr);
 Tr_exp Tr_whileExp(Tr_exp cond, Tr_exp body);
 Tr_exp Tr_arrayExp(Tr_exp size, Tr_exp eleVal);

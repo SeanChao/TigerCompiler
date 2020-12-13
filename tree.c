@@ -1,5 +1,8 @@
+
 #include "tree.h"
+
 #include <stdio.h>
+
 #include "symbol.h"
 #include "temp.h"
 #include "util.h"

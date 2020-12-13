@@ -6,7 +6,6 @@
 #include "symbol.h"
 #include "temp.h"
 #include "translate.h"
-#include "types.h"
 
 struct expty;
 
