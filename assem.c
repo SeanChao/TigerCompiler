@@ -39,6 +39,9 @@ AS_instr AS_Label(string a, Temp_label label) {
     return p;
 }
 
+/**
+ * Like AS_Oper, but only performs data transfer
+ */
 AS_instr AS_Move(string a, Temp_tempList d, Temp_tempList s) {
     AS_instr p = (AS_instr)checked_malloc(sizeof *p);
     p->kind = I_MOVE;

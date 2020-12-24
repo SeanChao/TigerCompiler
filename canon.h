@@ -7,6 +7,8 @@
 #ifndef CANNON_H
 #define CANNON_H
 
+#include "tree.h"
+
 typedef struct C_stmListList_ *C_stmListList;
 struct C_block {
     C_stmListList stmLists;

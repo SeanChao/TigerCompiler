@@ -3,6 +3,10 @@
 #ifndef REGALLOC_H
 #define REGALLOC_H
 
+#include "temp.h"
+#include "frame.h"
+#include "assem.h"
+
 struct RA_result {
     Temp_map coloring;
     AS_instrList il;

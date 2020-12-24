@@ -25,6 +25,12 @@
 
 extern bool anyErrors;
 
+#define PRINT_IR 1
+#define PRINT_LINEARIZED 1
+#define PRINT_BLOCK 1
+#define PRINT_TRACE 1
+#define PRINT_AS 1
+
 /*Lab6: complete the function doProc
  * 1. initialize the F_tempMap
  * 2. initialize the register lists (for register allocation)
@@ -32,6 +38,8 @@ extern bool anyErrors;
  * 4. output (print) the assembly code of each function
 
  * Uncommenting the following printf can help you debugging.*/
+
+Temp_map F_tempMap;
 
 /* print the assembly language instructions to filename.s */
 static void doProc(FILE *out, F_frame frame, T_stm body) {
@@ -42,25 +50,34 @@ static void doProc(FILE *out, F_frame frame, T_stm body) {
     struct C_block blo;
 
     F_tempMap = Temp_empty();
+    F_new();  // Initialize Frame module
 
-    // printf("doProc for function %s:\n", S_name(F_name(frame)));
-    /*printStmList(stdout, T_StmList(body, NULL));
-    printf("-------====IR tree=====-----\n");*/
+#ifdef PRINT_IR
+    printf("doProc for function %s:\n", S_name(F_name(frame)));
+    printStmList(stdout, T_StmList(body, NULL));
+    printf("-------====IR tree=====-----\n");
+#endif
 
     stmList = C_linearize(body);
-    /*printStmList(stdout, stmList);
-    printf("-------====Linearlized=====-----\n");*/
+#ifdef PRINT_LINEARIZED
+    printStmList(stdout, stmList);
+    printf("-------====Linearlized=====-----\n");
+#endif
 
     blo = C_basicBlocks(stmList);
     C_stmListList stmLists = blo.stmLists;
-    /*for (; stmLists; stmLists = stmLists->tail) {
-           printStmList(stdout, stmLists->head);
-           printf("------====Basic block=====-------\n");
-    }*/
+#ifdef PRINT_BLOCK
+    for (; stmLists; stmLists = stmLists->tail) {
+        printStmList(stdout, stmLists->head);
+        printf("------====Basic block=====-------\n");
+    }
+#endif
 
     stmList = C_traceSchedule(blo);
-    /*printStmList(stdout, stmList);
-    printf("-------====trace=====-----\n");*/
+#ifdef PRINT_TRACE
+    printStmList(stdout, stmList);
+    printf("-------====trace=====-----\n");
+#endif
     iList = F_codegen(frame, stmList); /* 9 */
 
     AS_printInstrList(stdout, iList, Temp_layerMap(F_tempMap, Temp_name()));
@@ -151,6 +168,6 @@ int main(int argc, string *argv) {
         fclose(out);
         return 0;
     }
-    EM_error(0, "usage: tiger file.tig");
+    EM_error(0, "usage: %s file.tig", argv[0]);
     return 1;
 }

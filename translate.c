@@ -463,7 +463,7 @@ void appendFrag(F_frag frag) {
 void Tr_procEntryExit(Tr_level level, Tr_exp body, Tr_accessList formals) {
     // TODO: if proc is void just unNx()
     T_stm stm = T_Move(T_Temp(Temp_newtemp()), unEx(body));
-    F_frag frag = F_ProcFrag(stm, NULL);
+    F_frag frag = F_ProcFrag(stm, level->frame);
     appendFrag(frag);
 }
 

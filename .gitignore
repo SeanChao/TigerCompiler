@@ -5,3 +5,10 @@ a.out
 *.png
 
 tags
+tiger-compiler
+y.output
+y.tab.c
+y.tab.h
+
+.vscode
+.idea

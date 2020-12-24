@@ -5,6 +5,7 @@
 #ifndef FRAME_H
 #define FRAME_H
 
+#include "assem.h"
 #include "tree.h"
 
 typedef struct F_frame_ *F_frame;
@@ -54,5 +55,23 @@ struct F_fragList_ {
 F_fragList F_FragList(F_frag head, F_fragList tail);
 
 T_exp F_externalCall(string s, T_expList args);
+
+Temp_map F_tempMap;
+
+AS_instrList F_procEntryExit2(AS_instrList body);
+AS_instrList F_procEntryExit3(F_frame frame, AS_instrList body);
+
+void F_new();
+
+Temp_temp F_rax();
+Temp_temp F_rbx();
+Temp_temp F_rcx();
+Temp_temp F_rdx();
+Temp_temp F_rsi();
+Temp_temp F_rdi();
+Temp_temp F_rbp();
+Temp_temp F_rsp();
+Temp_temp F_r8();
+Temp_temp F_r9();
 
 #endif

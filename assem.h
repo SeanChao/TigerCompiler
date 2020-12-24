@@ -6,6 +6,8 @@
 #ifndef ASSEM_H
 #define ASSEM_H
 
+#include "temp.h"
+
 typedef struct {
     Temp_labelList labels;
 } * AS_targets;

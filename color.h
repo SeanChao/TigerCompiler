@@ -6,6 +6,9 @@
 #ifndef COLOR_H
 #define COLOR_H
 
+#include "graph.h"
+#include "liveness.h"
+
 struct COL_result {
     Temp_map coloring;
     Temp_tempList spills;

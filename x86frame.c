@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "assem.h"
 #include "frame.h"
 #include "symbol.h"
 #include "table.h"
@@ -38,6 +39,11 @@ const int F_wordSize = 8;
 /* decs */
 
 F_accessList F_AccessList(F_access head, F_accessList tail);
+
+static Temp_temp rax, rbx, rcx, rdx, rdi, rsi, rbp, rsp, r8, r9, r10, r11, r12,
+    r13, r14, r15;
+// static Temp_tempList callerSaved = Temp_TempList(NULL, NULL);
+// static Temp_tempList calleeSaved = Temp_TempList(NULL, NULL);
 
 /* defs */
 
@@ -110,6 +116,8 @@ F_frame F_newFrame(Temp_label name, U_boolList Tr_formals) {
     return frame;
 }
 
+Temp_label F_name(F_frame f) { return f->name; }
+
 F_frag F_StringFrag(Temp_label label, string str) {
     F_frag frag = checked_malloc(sizeof(*frag));
     frag->kind = F_stringFrag;
@@ -138,3 +146,72 @@ T_stm F_procEntryExit1(F_frame frame, T_stm stm) { return stm; }
 T_exp F_externalCall(string s, T_expList args) {
     return T_Call(T_Name(Temp_namedlabel(s)), args);
 }
+
+static Temp_tempList returnSink = NULL;
+static Temp_tempList calleeSaves = NULL;
+
+/**
+ * Appends a sink instruction to the function body to tell the register
+ * allocator that certain registers are live at procedure exit.
+ * @param body
+ * @return
+ */
+AS_instrList F_procEntryExit2(AS_instrList body) {
+    if (!returnSink)
+        returnSink =
+            Temp_TempList(F_rax(), Temp_TempList(F_rsp(), calleeSaves));
+    return AS_splice(
+        body, AS_InstrList(AS_Oper("// procEntryExit2", NULL, returnSink, NULL),
+                           NULL));
+}
+
+AS_instrList F_procEntryExit3(F_frame frame, AS_instrList body) {
+    char buf[100];
+    sprintf(buf, "procedure %s", S_name(frame->name));
+    return AS_Proc(String(buf), body, "END");
+}
+
+void F_new() {
+    rax = Temp_newtemp();
+    rbx = Temp_newtemp();
+    rcx = Temp_newtemp();
+    rdx = Temp_newtemp();
+    rdi = Temp_newtemp();
+    rsi = Temp_newtemp();
+    rbp = Temp_newtemp();
+    rsp = Temp_newtemp();
+    r8 = Temp_newtemp();
+    r9 = Temp_newtemp();
+    r10 = Temp_newtemp();
+    r11 = Temp_newtemp();
+    r12 = Temp_newtemp();
+    r13 = Temp_newtemp();
+    r14 = Temp_newtemp();
+    r15 = Temp_newtemp();
+    // RBX, RBP, RDI, RSI, RSP, R12, R13, R14, and R15
+    calleeSaves = Temp_TempList(
+        rbx,
+        Temp_TempList(
+            rbp,
+            Temp_TempList(
+                rdi,
+                Temp_TempList(
+                    rsi,
+                    Temp_TempList(
+                        rsp, Temp_TempList(
+                                 r12, Temp_TempList(
+                                          r13, Temp_TempList(
+                                                   r14, Temp_TempList(
+                                                            r15, NULL)))))))));
+}
+
+Temp_temp F_rax() { return rax; }
+Temp_temp F_rbx() { return rbx; }
+Temp_temp F_rcx() { return rcx; }
+Temp_temp F_rdx() { return rdx; }
+Temp_temp F_rsi() { return rsi; }
+Temp_temp F_rdi() { return rdi; }
+Temp_temp F_rbp() { return rbp; }
+Temp_temp F_rsp() { return rsp; }
+Temp_temp F_r8() { return r8; }
+Temp_temp F_r9() { return r9; }

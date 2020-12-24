@@ -1,6 +1,9 @@
 #ifndef LIVENESS_H
 #define LIVENESS_H
 
+#include "graph.h"
+#include "temp.h"
+
 typedef struct Live_moveList_ *Live_moveList;
 struct Live_moveList_ {
     G_node src, dst;
