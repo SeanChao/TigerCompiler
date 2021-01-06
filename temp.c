@@ -56,20 +56,20 @@ Temp_map Temp_name(void) {
     return m;
 }
 
-Temp_map newMap(TAB_table tab, Temp_map under) {
+Temp_map Temp_newMap(TAB_table tab, Temp_map under) {
     Temp_map m = checked_malloc(sizeof(*m));
     m->tab = tab;
     m->under = under;
     return m;
 }
 
-Temp_map Temp_empty(void) { return newMap(TAB_empty(), NULL); }
+Temp_map Temp_empty(void) { return Temp_newMap(TAB_empty(), NULL); }
 
 Temp_map Temp_layerMap(Temp_map over, Temp_map under) {
     if (over == NULL)
         return under;
     else
-        return newMap(over->tab, Temp_layerMap(over->under, under));
+        return Temp_newMap(over->tab, Temp_layerMap(over->under, under));
 }
 
 void Temp_enter(Temp_map m, Temp_temp t, string s) {
@@ -114,5 +114,67 @@ void Temp_dumpMap(FILE *out, Temp_map m) {
     if (m->under) {
         fprintf(out, "---------\n");
         Temp_dumpMap(out, m->under);
+    }
+}
+
+bool listLook(Temp_tempList list, Temp_temp t) {
+    for (Temp_tempList iter = list; iter; iter = iter->tail) {
+        if (iter->head == t) return TRUE;
+    }
+    return FALSE;
+}
+
+Temp_tempList Temp_tempListUnion(Temp_tempList lhs, Temp_tempList rhs) {
+    // Temp_dumpList(stderr, lhs);
+    // Temp_dumpList(stderr, rhs);
+    Temp_tempList ret = rhs;
+    for (Temp_tempList it = lhs; it; it = it->tail) {
+        Temp_temp lt = it->head;
+        // remove NULL
+        if (lt == NULL) continue;
+        Temp_tempList rIt;
+        for (rIt = rhs; rIt; rIt = rIt->tail) {
+            if (lt == rIt->head) break;
+        }
+        if (rIt == NULL) ret = Temp_TempList(lt, ret);
+    }
+    return ret;
+}
+
+Temp_tempList Temp_tempListDiff(Temp_tempList lhs, Temp_tempList rhs) {
+    Temp_tempList ret = NULL;
+    for (Temp_tempList lIt = lhs; lIt; lIt = lIt->tail) {
+        Temp_temp nl = lIt->head;
+        Temp_tempList rIt = NULL;
+        for (rIt = rhs; rIt; rIt = rIt->tail) {
+            Temp_temp nr = rIt->head;
+            if (nl == nr) break;
+        }
+        if (rIt == NULL) ret = Temp_TempList(nl, ret);
+    }
+    return ret;
+}
+
+void Temp_append(Temp_tempList list, Temp_temp t) {
+    Temp_tempList iter;
+    for (iter = list; iter->tail; iter = iter->tail)
+        ;
+    iter->tail = Temp_TempList(t, NULL);
+}
+
+void Temp_dumpList(FILE *out, Temp_tempList list) {
+    for (Temp_tempList iter = list; iter; iter = iter->tail) {
+        fprintf(out, "temp%d, ", iter->head->num);
+    }
+    fprintf(out, "\n");
+}
+
+int Temp_getnum(Temp_temp t) { return t->num; }
+
+void Temp_tempReplace(Temp_tempList l, Temp_temp origin, Temp_temp newTemp) {
+    for (; l; l = l->tail) {
+        if (l->head == origin) {
+            l->head = newTemp;
+        }
     }
 }

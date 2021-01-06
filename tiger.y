@@ -130,6 +130,7 @@ exp: lvalue		{$$=A_VarExp(EM_tokPos,$1);}
    | STRING {$$=A_StringExp(EM_tokPos, $1);}
    | NIL	{$$=A_NilExp(EM_tokPos);}
    | LPAREN seqexp RPAREN	{$$=A_SeqExp(EM_tokPos, $2);}
+   | BREAK	{$$=A_BreakExp(EM_tokPos);}
 
 exps: exp COMMA exps		{$$=A_ExpList($1, $3);}
 	| exp		{$$=A_ExpList($1, NULL);}

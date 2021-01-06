@@ -20,9 +20,10 @@
  */
 struct F_frame_ {
     Temp_label name;
-    U_boolList escapeList;
+    U_boolList escapeList;  // defined by Tr_formals
     F_accessList formals;
     F_accessList localVars;
+    int size;
 };
 
 struct F_access_ {
@@ -33,17 +34,21 @@ struct F_access_ {
     } u;
 };
 
-Temp_temp F_FP() { return Temp_newtemp(); }
+Temp_temp F_FP();
+
 const int F_wordSize = 8;
 
+int F_getOffset(F_access acc);
 /* decs */
 
+int F_getOffset(F_access acc) { return acc->u.offset; }
 F_accessList F_AccessList(F_access head, F_accessList tail);
 
 static Temp_temp rax, rbx, rcx, rdx, rdi, rsi, rbp, rsp, r8, r9, r10, r11, r12,
     r13, r14, r15;
-// static Temp_tempList callerSaved = Temp_TempList(NULL, NULL);
-// static Temp_tempList calleeSaved = Temp_TempList(NULL, NULL);
+
+static Temp_tempList paramRegisters;
+static int paramRegistersNum = 6;
 
 /* defs */
 
@@ -55,6 +60,7 @@ T_exp F_Exp(F_access acc, T_exp framePtr) {
         case inFrame:
             return T_Mem(T_Binop(T_plus, framePtr, T_Const(acc->u.offset)));
         case inReg:
+            return T_Temp(acc->u.reg);
         default:
             break;
     }
@@ -65,19 +71,20 @@ static F_access F_AccessInFrame(F_frame frame) {
     F_accessList locals = frame->localVars;
     F_access access = checked_malloc(sizeof(*access));
     access->kind = inFrame;
-    int offset = 0;
+    int offset = -(frame->size);
     while (locals->tail) {
         locals = locals->tail;
-        offset -= F_wordSize;
+        // offset -= F_wordSize;
     }
     access->u.offset = offset;
     locals->tail = F_AccessList(access, NULL);
+    frame->size += F_wordSize;
     return access;
 }
 
 static F_access F_AccessInReg(Temp_temp reg) {
     F_access access = checked_malloc(sizeof(*access));
-    access->kind = inFrame;
+    access->kind = inReg;
     access->u.reg = reg;
     return access;
 }
@@ -107,16 +114,22 @@ F_accessList createAccessList(U_boolList formals) {
     return list;
 }
 
+/**
+ * build a new frame, access is created
+ */
 F_frame F_newFrame(Temp_label name, U_boolList Tr_formals) {
     F_frame frame = checked_malloc(sizeof(*frame));
     frame->name = name;
     frame->escapeList = Tr_formals;
     frame->formals = createAccessList(Tr_formals);
     frame->localVars = createAccessList(Tr_formals);
+    frame->size = 0;
     return frame;
 }
 
 Temp_label F_name(F_frame f) { return f->name; }
+
+F_accessList F_formalAccessList(F_frame f) { return f->formals; }
 
 F_frag F_StringFrag(Temp_label label, string str) {
     F_frag frag = checked_malloc(sizeof(*frag));
@@ -141,14 +154,57 @@ F_fragList F_FragList(F_frag head, F_fragList tail) {
     return fragList;
 }
 
-T_stm F_procEntryExit1(F_frame frame, T_stm stm) { return stm; }
-
 T_exp F_externalCall(string s, T_expList args) {
     return T_Call(T_Name(Temp_namedlabel(s)), args);
 }
 
 static Temp_tempList returnSink = NULL;
 static Temp_tempList calleeSaves = NULL;
+static Temp_tempList callerSaves = NULL;
+
+T_stm F_procEntryExit1(F_frame frame, T_stm stm) {
+    // view shift: move temps for formal parameters according to calling
+    // convention
+    T_stm shift = NULL;
+    Temp_tempList paramsTemp = F_paramRegisters();
+    int nth = 0;
+    for (F_accessList al = frame->formals->tail; al; al = al->tail) {
+        F_access acc = al->head;
+        T_exp src = NULL, dst = NULL;
+        if (acc->kind == inReg && paramsTemp) {
+            src = T_Temp(paramsTemp->head);
+            dst = F_Exp(acc, T_Temp(F_FP()));
+            paramsTemp = paramsTemp->tail;
+        } else {
+            // push to stack
+            // skip 2 words for return addr and saved %rbp
+            src = T_Mem(
+                T_Binop(T_plus, T_Temp(F_FP()),
+                        T_Const((nth - paramRegistersNum + 2) * F_wordSize)));
+            dst = F_Exp(acc, T_Temp(F_FP()));
+        }
+        T_stm stm = T_Move(dst, src);
+        shift = shift ? T_Seq(shift, stm) : stm;
+        nth++;
+    }
+    // save/restore callee-save registers, no need for rbp, rsp, handled
+    // elsewhere
+    Temp_tempList savedTemps = Temp_tempListDiff(
+        calleeSaves, Temp_TempList(rbp, Temp_TempList(rsp, NULL)));
+    T_stm saveStm = NULL;
+    T_stm restoreStm = NULL;
+    for (Temp_tempList it = savedTemps; it; it = it->tail) {
+        Temp_temp reg = it->head;
+        Temp_temp t = Temp_newtemp();
+        saveStm = saveStm ? T_Seq(T_Move(T_Temp(t), T_Temp(reg)), saveStm)
+                          : T_Move(T_Temp(t), T_Temp(reg));
+        restoreStm = restoreStm
+                         ? T_Seq(T_Move(T_Temp(reg), T_Temp(t)), restoreStm)
+                         : T_Move(T_Temp(reg), T_Temp(t));
+    }
+    return shift ? T_Seq(saveStm, T_Seq(shift, T_Seq(stm, restoreStm)))
+                 : T_Seq(saveStm, T_Seq(stm, restoreStm));
+}
 
 /**
  * Appends a sink instruction to the function body to tell the register
@@ -161,48 +217,77 @@ AS_instrList F_procEntryExit2(AS_instrList body) {
         returnSink =
             Temp_TempList(F_rax(), Temp_TempList(F_rsp(), calleeSaves));
     return AS_splice(
-        body, AS_InstrList(AS_Oper("// procEntryExit2", NULL, returnSink, NULL),
+        body, AS_InstrList(AS_Oper("# procEntryExit2", NULL, returnSink, NULL),
                            NULL));
 }
 
-AS_instrList F_procEntryExit3(F_frame frame, AS_instrList body) {
-    char buf[100];
-    sprintf(buf, "procedure %s", S_name(frame->name));
-    return AS_Proc(String(buf), body, "END");
+AS_proc F_procEntryExit3(F_frame frame, AS_instrList body) {
+    // prolog
+    char prolog[1024];
+    sprintf(prolog, "# procEntryExit3 procedure %s", S_name(frame->name));
+    char fmtStr[] =
+        "pushq %%rbp\n"
+        "movq %%rsp, %%rbp\n"
+        "subq $%d, %%rsp\n";
+    sprintf(prolog, fmtStr, frame->size);
+    // epilog
+    char epilog[1024];
+    sprintf(epilog, "leaveq\nret\n");
+    return AS_Proc(String(prolog), body, String(epilog));
 }
 
 void F_new() {
-    rax = Temp_newtemp();
+    rax = Temp_newtemp(); // 100
     rbx = Temp_newtemp();
     rcx = Temp_newtemp();
     rdx = Temp_newtemp();
     rdi = Temp_newtemp();
-    rsi = Temp_newtemp();
+    rsi = Temp_newtemp(); // 105
     rbp = Temp_newtemp();
     rsp = Temp_newtemp();
     r8 = Temp_newtemp();
     r9 = Temp_newtemp();
-    r10 = Temp_newtemp();
+    r10 = Temp_newtemp(); // 110
     r11 = Temp_newtemp();
     r12 = Temp_newtemp();
     r13 = Temp_newtemp();
     r14 = Temp_newtemp();
-    r15 = Temp_newtemp();
+    r15 = Temp_newtemp(); // 115
     // RBX, RBP, RDI, RSI, RSP, R12, R13, R14, and R15
     calleeSaves = Temp_TempList(
-        rbx,
+        rbp,
         Temp_TempList(
-            rbp,
+            rbx,
             Temp_TempList(
-                rdi,
+                r12, Temp_TempList(
+                         r13, Temp_TempList(r14, Temp_TempList(r15, NULL))))));
+    // debug: simpler callee-save
+    // calleeSaves = Temp_TempList(rbx, Temp_TempList(rbp, NULL));
+    callerSaves = Temp_TempList(
+        rax,
+        Temp_TempList(
+            rcx,
+            Temp_TempList(
+                rdx,
                 Temp_TempList(
-                    rsi,
+                    rdi,
                     Temp_TempList(
-                        rsp, Temp_TempList(
-                                 r12, Temp_TempList(
-                                          r13, Temp_TempList(
-                                                   r14, Temp_TempList(
-                                                            r15, NULL)))))))));
+                        rsi,
+                        Temp_TempList(
+                            rsp,
+                            Temp_TempList(
+                                r8, Temp_TempList(
+                                        r9, Temp_TempList(
+                                                r10, Temp_TempList(
+                                                         r11, NULL))))))))));
+    paramRegisters = Temp_TempList(
+        rdi,
+        Temp_TempList(
+            rsi,
+            Temp_TempList(
+                rdx, Temp_TempList(
+                         rcx, Temp_TempList(r8, Temp_TempList(r9, NULL))))));
+    F_initTempMap();
 }
 
 Temp_temp F_rax() { return rax; }
@@ -215,3 +300,74 @@ Temp_temp F_rbp() { return rbp; }
 Temp_temp F_rsp() { return rsp; }
 Temp_temp F_r8() { return r8; }
 Temp_temp F_r9() { return r9; }
+Temp_temp F_r10() { return r10; }
+Temp_temp F_r11() { return r11; }
+Temp_temp F_r12() { return r12; }
+Temp_temp F_r13() { return r13; }
+Temp_temp F_r14() { return r14; }
+Temp_temp F_r15() { return r15; }
+Temp_temp F_Rv() { return rax; }
+Temp_temp F_FP() { return rbp; }
+
+Temp_tempList F_registers() {
+    return Temp_TempList(
+        rax,
+        Temp_TempList(
+            rbx,
+            Temp_TempList(
+                rcx,
+                Temp_TempList(
+                    rdx,
+                    Temp_TempList(
+                        rbp,
+                        Temp_TempList(
+                            rdi,
+                            Temp_TempList(
+                                rsi,
+                                Temp_TempList(
+                                    rsp,
+                                    Temp_TempList(
+                                        r8,
+                                        Temp_TempList(
+                                            r9,
+                                            Temp_TempList(
+                                                r10,
+                                                Temp_TempList(
+                                                    r11,
+                                                    Temp_TempList(
+                                                        r12,
+                                                        Temp_TempList(
+                                                            r13,
+                                                            Temp_TempList(
+                                                                r14,
+                                                                Temp_TempList(
+                                                                    r15,
+                                                                    NULL))))))))))))))));
+}
+
+Temp_tempList F_callerSavedRegisters() { return callerSaves; }
+
+Temp_tempList F_paramRegisters() { return paramRegisters; }
+
+Temp_map F_initTempMap(void) {
+    if (!F_tempMap) {
+        F_tempMap = Temp_empty();
+        Temp_enter(F_tempMap, F_rax(), "\%rax");
+        Temp_enter(F_tempMap, F_rbx(), "\%rbx");
+        Temp_enter(F_tempMap, F_rcx(), "\%rcx");
+        Temp_enter(F_tempMap, F_rdx(), "\%rdx");
+        Temp_enter(F_tempMap, F_rbp(), "\%rbp");
+        Temp_enter(F_tempMap, F_rsp(), "\%rsp");
+        Temp_enter(F_tempMap, F_rdi(), "\%rdi");
+        Temp_enter(F_tempMap, F_rsi(), "\%rsi");
+        Temp_enter(F_tempMap, F_r8(), "\%r8");
+        Temp_enter(F_tempMap, F_r9(), "\%r9");
+        Temp_enter(F_tempMap, F_r10(), "\%r10");
+        Temp_enter(F_tempMap, F_r11(), "\%r11");
+        Temp_enter(F_tempMap, F_r12(), "\%r12");
+        Temp_enter(F_tempMap, F_r13(), "\%r13");
+        Temp_enter(F_tempMap, F_r14(), "\%r14");
+        Temp_enter(F_tempMap, F_r15(), "\%r15");
+    }
+    return F_tempMap;
+}

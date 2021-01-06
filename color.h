@@ -10,10 +10,16 @@
 #include "liveness.h"
 
 struct COL_result {
-    Temp_map coloring;
-    Temp_tempList spills;
+    Temp_map coloring;     // description of register allocation
+    Temp_tempList spills;  // spilled registers
 };
+
+/**
+ * Given the interference graph, precolored nodes and machine registers, just do
+ * the graph coloring
+ * @param{initial} pre-colored nodes
+ */
 struct COL_result COL_color(G_graph ig, Temp_map initial, Temp_tempList regs,
-                            Live_moveList moves);
+                            Live_moveList moves, G_table nodeToMove);
 
 #endif

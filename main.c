@@ -10,7 +10,9 @@
 #include "env.h"
 #include "errormsg.h"
 #include "escape.h"
+#include "flowgraph.h"
 #include "frame.h" /* needed by translate.h and printfrags prototype */
+#include "graph.h"
 #include "parse.h"
 #include "prabsyn.h"
 #include "printtree.h"
@@ -49,9 +51,6 @@ static void doProc(FILE *out, F_frame frame, T_stm body) {
     AS_instrList iList;
     struct C_block blo;
 
-    F_tempMap = Temp_empty();
-    F_new();  // Initialize Frame module
-
 #ifdef PRINT_IR
     printf("doProc for function %s:\n", S_name(F_name(frame)));
     printStmList(stdout, T_StmList(body, NULL));
@@ -83,17 +82,15 @@ static void doProc(FILE *out, F_frame frame, T_stm body) {
     AS_printInstrList(stdout, iList, Temp_layerMap(F_tempMap, Temp_name()));
     printf("----======before RA=======-----\n");
 
-    // G_graph fg = FG_AssemFlowGraph(iList);  /* 10.1 */
-    struct RA_result ra = RA_regAlloc(frame, iList); /* 11 */
+    G_graph fg = FG_AssemFlowGraph(iList, frame); /* 10.1 */
+    allocation = RA_regAlloc(frame, iList);       /* 11 */
 
-    fprintf(out, "BEGIN function\n");
-    AS_printInstrList(out, proc->body, Temp_layerMap(F_tempMap, ra.coloring));
-    fprintf(out, "END function\n");
+    printf("----======RA=======-----\n");
+    Temp_dumpMap(stdout, allocation.coloring);
 
     // Part of TA's implementation. Just for reference.
-    /*
-    AS_rewrite(ra.il, Temp_layerMap(F_tempMap, ra.coloring));
-    proc =	F_procEntryExit3(frame, ra.il);
+    // AS_rewrite(ra.il, Temp_layerMap(F_tempMap, ra.coloring));
+    proc = F_procEntryExit3(frame, allocation.il);
 
     string procName = S_name(F_name(frame));
     fprintf(out, ".text\n");
@@ -101,15 +98,13 @@ static void doProc(FILE *out, F_frame frame, T_stm body) {
     fprintf(out, ".type %s, @function\n", procName);
     fprintf(out, "%s:\n", procName);
 
-
-    //fprintf(stdout, "%s:\n", Temp_labelstring(F_name(frame)));
-    //prologue
+    // fprintf(stdout, "%s:\n", Temp_labelstring(F_name(frame)));
+    // prologue
     fprintf(out, "%s", proc->prolog);
-    AS_printInstrList (out, proc->body,
-                          Temp_layerMap(F_tempMap, ra.coloring));
+    AS_printInstrList(out, proc->body,
+                      Temp_layerMap(F_tempMap, allocation.coloring));
     fprintf(out, "%s", proc->epilog);
-    //fprintf(out, "END %s\n\n", Temp_labelstring(F_name(frame)));
-    */
+    // fprintf(out, "END %s\n\n", Temp_labelstring(F_name(frame)));
 }
 
 void doStr(FILE *out, Temp_label label, string str) {
@@ -118,12 +113,18 @@ void doStr(FILE *out, Temp_label label, string str) {
 
     int length = *(int *)str;
     length = length + 4;
-    // it may contains zeros in the middle of string. To keep this work, we need
-    // to print all the charactors instead of using fprintf(str)
     fprintf(out, ".string \"");
     int i = 0;
     for (; i < length; i++) {
-        fprintf(out, "%c", str[i]);
+        if ((str[i] < 32) || (str[i] > 176)) {
+            // For non-printable characters: transforming into escape + octal
+            fprintf(out, "\\");
+            fprintf(out, "%d", str[i] / 64 % 8);
+            fprintf(out, "%d", str[i] / 8 % 8);
+            fprintf(out, "%d", str[i] % 8);
+        } else {
+            fprintf(out, "%c", str[i]);
+        }
     }
     fprintf(out, "\"\n");
 
@@ -132,7 +133,7 @@ void doStr(FILE *out, Temp_label label, string str) {
 
 int main(int argc, string *argv) {
     A_exp absyn_root;
-    S_table base_env, base_tenv;
+    // S_table base_env, base_tenv;
     F_fragList frags;
     char outfile[100];
     FILE *out = stdout;
@@ -141,29 +142,36 @@ int main(int argc, string *argv) {
         absyn_root = parse(argv[1]);
         if (!absyn_root) return 1;
 
+        setvbuf(stdout, NULL, _IONBF, 0);
+        setvbuf(stderr, NULL, _IONBF, 0);
+
 #if 0
    pr_exp(out, absyn_root, 0); /* print absyn data structure */
    fprintf(out, "\n");
 #endif
 
-        // Lab 6: escape analysis
-        // If you have implemented escape analysis, uncomment this
-        // Esc_findEscape(absyn_root); /* set varDec's escape field */
+        // escape analysis
+        Esc_findEscape(absyn_root); /* set varDec's escape field */
 
+        F_new();  // Initialize Frame module
         frags = SEM_transProg(absyn_root);
         if (anyErrors) return 1; /* don't continue */
 
         /* convert the filename */
         sprintf(outfile, "%s.s", argv[1]);
         out = fopen(outfile, "w");
+        setvbuf(out, NULL, _IONBF, 0);
+        int _niter = 0;
         /* Chapter 8, 9, 10, 11 & 12 */
-        for (; frags; frags = frags->tail)
+        for (; frags; frags = frags->tail) {
+            printf("############## MAIN do-%d\n", ++_niter);
             if (frags->head->kind == F_procFrag) {
                 doProc(out, frags->head->u.proc.frame,
                        frags->head->u.proc.body);
             } else if (frags->head->kind == F_stringFrag)
                 doStr(out, frags->head->u.stringg.label,
                       frags->head->u.stringg.str);
+        }
 
         fclose(out);
         return 0;

@@ -59,9 +59,8 @@ struct AS_proc_ {
 AS_proc AS_Proc(string p, AS_instrList b, string e);
 
 // TA's implementation. Just for reference.
-// void AS_rewrite(AS_instrList iList, Temp_map m);
-// typedef struct F_frame_ *F_frame;
-// AS_instrList AS_rewriteSpill(F_frame f, AS_instrList il, Temp_tempList
-// spills);
+AS_instrList AS_rewrite(AS_instrList iList, Temp_map m);
+typedef struct F_frame_ *F_frame;
+AS_instrList AS_rewriteSpill(F_frame f, AS_instrList il, Temp_tempList spills);
 
 #endif

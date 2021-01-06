@@ -13,6 +13,3 @@ jobs:
       - name: Build
         run: |
           make
-      - name: Test
-        run: |
-          ./gradeMe.sh

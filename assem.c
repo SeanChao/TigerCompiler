@@ -180,3 +180,87 @@ AS_proc AS_Proc(string p, AS_instrList b, string e) {
     proc->epilog = e;
     return proc;
 }
+
+AS_instrList AS_rewrite(AS_instrList iList, Temp_map m) {
+    AS_instrList prev = NULL;
+    AS_instrList origin = iList;
+
+    for (AS_instrList i = iList; i; i = i->tail) {
+        AS_instr instr = i->head;
+        if (instr->kind == I_MOVE) {
+            Temp_temp src = instr->u.MOVE.src->head;
+            Temp_temp dst = instr->u.MOVE.dst->head;
+            if (Temp_look(m, src) == Temp_look(m, dst)) {
+                if (prev) {
+                    prev->tail = i->tail;
+                    continue;
+                } else {
+                    origin = i->tail;
+                }
+            }
+        }
+        if (instr->kind == I_OPER &&
+            strncmp("jmp", instr->u.OPER.assem, 4) == 0) {
+            if (i->tail) {
+                AS_instr nInstr = i->tail->head;
+                if (nInstr->kind == I_LABEL &&
+                    nInstr->u.LABEL.label ==
+                        instr->u.OPER.jumps->labels->head) {
+                    i = i->tail;
+                    if (prev) {
+                        prev->tail = i->tail;
+                        continue;
+                    } else {
+                        origin = i->tail;
+                    }
+                }
+            }
+        }
+        prev = i;
+    }
+    return origin;
+}
+
+AS_instrList AS_rewriteSpill(F_frame f, AS_instrList il, Temp_tempList spills) {
+    for (; spills; spills = spills->tail) {
+        Temp_temp t = spills->head;
+        F_access acc = F_allocLocal(f, TRUE);
+        AS_instrList i = il;
+        for (; i; i = i->tail) {
+            AS_instr instr = i->head;
+            if (instr->kind == I_LABEL) continue;
+            Temp_tempList dst = NULL, src = NULL;
+            if (instr->kind == I_OPER) {
+                dst = instr->u.OPER.dst;
+                src = instr->u.OPER.src;
+            } else {
+                dst = instr->u.MOVE.dst;
+                src = instr->u.MOVE.src;
+            }
+            if (listLook(src, t)) {
+                Temp_temp newTemp = Temp_newtemp();
+                char buf[256];
+                sprintf(buf, "mov %d(`s0), `d0 # spill src", F_getOffset(acc));
+                AS_instr newInstr =
+                    AS_Oper(String(buf), Temp_TempList(newTemp, NULL),
+                            Temp_TempList(F_FP(), NULL), NULL);
+                Temp_tempReplace(src, t, newTemp);
+                i->tail = AS_InstrList(i->head, i->tail);
+                i->head = newInstr;
+                i = i->tail;
+            }
+            if (listLook(dst, t)) {
+                Temp_temp newTemp = Temp_newtemp();
+                char buf[256];
+                sprintf(buf, "mov `s0, %d(`s1) # spill dst", F_getOffset(acc));
+                AS_instr newInstr = AS_Oper(
+                    String(buf), NULL,
+                    Temp_TempList(newTemp, Temp_TempList(F_FP(), NULL)), NULL);
+                Temp_tempReplace(dst, t, newTemp);
+                i->tail = AS_InstrList(newInstr, i->tail);
+                i = i->tail;
+            }
+        }
+    }
+    return il;
+}

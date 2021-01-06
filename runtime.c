@@ -45,6 +45,8 @@ void flush() { fflush(stdout); }
 struct string consts[256];
 struct string empty = {0, ""};
 
+extern int tigermain(int *);
+
 int main() {
     int i;
     for (i = 0; i < 256; i++) {

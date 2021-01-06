@@ -303,27 +303,30 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a, Tr_level level,
             return expTy(trexp, Ty_Void());
         }
         case A_whileExp: {
+            Temp_label done = Temp_newlabel();
             struct expty testExp =
                 transExp(venv, tenv, a->u.whilee.test, level, label);
             struct expty bodyExp =
-                transExp(venv, tenv, a->u.whilee.body, level, label);
+                transExp(venv, tenv, a->u.whilee.body, level, done);
             if (bodyExp.ty->kind != Ty_void)
                 EM_error(a->u.whilee.body->pos,
                          "while body must produce no value");
-            return expTy(Tr_whileExp(testExp.exp, bodyExp.exp), Ty_Void());
+            return expTy(Tr_whileExp(testExp.exp, bodyExp.exp, done),
+                         Ty_Void());
         }
         case A_forExp: {
             S_symbol loopVar = a->u.forr.var;
-            Tr_access acc = Tr_allocLocal(level, TRUE);
+            Tr_access acc = Tr_allocLocal(level, a->u.forr.escape);
             S_enter(venv, loopVar, E_VarEntry(acc, Ty_Int()));
             S_beginScope(venv);
             S_beginScope(tenv);
+            Temp_label done = Temp_newlabel();  // label for break to jump to
             struct expty loExpr =
                 transExp(venv, tenv, a->u.forr.lo, level, label);
             struct expty hiExpr =
                 transExp(venv, tenv, a->u.forr.hi, level, label);
             struct expty body =
-                transExp(venv, tenv, a->u.forr.body, level, label);
+                transExp(venv, tenv, a->u.forr.body, level, done);
             if (loExpr.ty->kind != Ty_int)
                 EM_error(a->u.forr.lo->pos,
                          "for exp's range type is not integer");
@@ -359,29 +362,32 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a, Tr_level level,
             S_endScope(tenv);
             S_endScope(venv);
             return expTy(
-                Tr_forExp(acc, level, loExpr.exp, hiExpr.exp, body.exp),
+                Tr_forExp(acc, level, loExpr.exp, hiExpr.exp, body.exp, done),
                 Ty_Void());
         }
-        case A_breakExp:
-            break;
         case A_letExp: {
             struct expty exp;
             A_decList d;
             S_beginScope(venv);
             S_beginScope(tenv);
             d = a->u.let.decs;
-            Tr_exp dec =
-                Tr_EseqExp(transDec(venv, tenv, d->head, level, label), NULL);
-            d = d->tail;
+            Tr_expList exps = NULL;
+            Tr_expList tail = NULL;
             for (; d; d = d->tail) {
-                Tr_exp child = transDec(venv, tenv, d->head, level, label);
-                dec = Tr_EseqExp(dec, child);
+                Tr_exp exp = transDec(venv, tenv, d->head, level, label);
+                if (exps == NULL) {
+                    exps = tail = Tr_ExpList(exp, NULL);
+                } else {
+                    tail->tail = Tr_ExpList(exp, NULL);
+                    tail = tail->tail;
+                }
             }
             exp = transExp(venv, tenv, a->u.let.body, level, label);
+            tail->tail = Tr_ExpList(exp.exp, NULL);
             S_endScope(tenv);
             S_endScope(venv);
             struct expty letExp;
-            letExp.exp = Tr_EseqExp(dec, exp.exp);
+            letExp.exp = Tr_listToExp(exps);
             letExp.ty = exp.ty;
             return letExp;
         }
@@ -403,6 +409,12 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a, Tr_level level,
                 tr = Tr_arrayExp(sizeExpTy.exp, initExpTy.exp);
             }
             return expTy(tr, ty);
+        }
+        case A_breakExp: {
+            if (!label) {
+                return expTy(Tr_noOp(), Ty_Void());
+            }
+            return expTy(Tr_breakExp(label), Ty_Void());
         }
         default:
             break;
@@ -433,7 +445,7 @@ Tr_exp transDec(S_table venv, S_table tenv, A_dec d, Tr_level level,
             if (e.ty->kind == Ty_nil && tySym == NULL)
                 EM_error(d->pos,
                          "init should not be nil without type specified");
-            Tr_access access = Tr_allocLocal(level, TRUE);
+            Tr_access access = Tr_allocLocal(level, d->u.var.escape);
             S_enter(venv, d->u.var.var, E_VarEntry(access, e.ty));
             return Tr_varDec(access, e.exp);
         }
@@ -472,8 +484,7 @@ Tr_exp transDec(S_table venv, S_table tenv, A_dec d, Tr_level level,
                 Ty_ty resultTy =
                     f->result ? S_look(tenv, f->result) : Ty_Void();
                 Ty_tyList formalTys = makeFormalTyList(tenv, f->params);
-                U_boolList boolList =
-                    U_BoolList(FALSE, U_BoolList(FALSE, NULL));
+                U_boolList boolList = makeBoolList(f->params);
                 Temp_label newLevelLabel = Temp_newlabel();
                 Tr_level newLevel = Tr_newLevel(level, newLevelLabel, boolList);
                 S_enter(
@@ -491,8 +502,11 @@ Tr_exp transDec(S_table venv, S_table tenv, A_dec d, Tr_level level,
                 Ty_tyList t = formalTys;
                 E_enventry funEntry = S_look(venv, f->name);
                 Tr_level funcLevel = funEntry->u.fun.level;
-                for (; l; l = l->tail, t = t->tail) {
-                    Tr_access acc = Tr_allocLocal(funcLevel, TRUE);
+                Tr_accessList accList = Tr_formals(funcLevel);
+                for (; l; l = l->tail, t = t->tail, accList = accList->tail) {
+                    // Tr_access acc = Tr_allocLocal(funcLevel,
+                    // l->head->escape);
+                    Tr_access acc = accList->head;
                     S_enter(venv, l->head->name, E_VarEntry(acc, t->head));
                 }
                 struct expty body =
@@ -501,7 +515,7 @@ Tr_exp transDec(S_table venv, S_table tenv, A_dec d, Tr_level level,
                     EM_error(cur->head->pos, "procedure returns value");
                 }
                 S_endScope(venv);
-                Tr_procEntryExit(level, body.exp, NULL);
+                Tr_procEntryExit(funcLevel, body.exp, NULL);
                 cur = cur->tail;
             }
             return Tr_noOp();
@@ -552,12 +566,13 @@ Ty_ty transTy(S_table tenv, A_ty a) {
 F_fragList SEM_transProg(A_exp exp) {
     S_table venv = E_base_venv();
     S_table tenv = E_base_tenv();
-    Tr_level outmost = Tr_outermost();
-    Tr_level mainLevel =
-        Tr_newLevel(outmost, Temp_newlabel(), U_BoolList(TRUE, NULL));
-    struct expty prog = transExp(venv, tenv, exp, mainLevel, Temp_newlabel());
+    Tr_level mainLevel = Tr_newLevel(
+        Tr_outermost(), Temp_namedlabel("tigermain"), U_BoolList(TRUE, NULL));
+    struct expty prog = transExp(venv, tenv, exp, mainLevel, NULL);
     Tr_procEntryExit(mainLevel, prog.exp, NULL);
-    // printIR();
+    FILE* irOut = fopen("myir.dot", "w");
+    printIR(irOut);
+    fclose(irOut);
     return Tr_getResult();
 }
 
@@ -576,15 +591,15 @@ Ty_tyList makeFormalTyList(S_table tenv, A_fieldList params) {
     return tyList;
 }
 
-U_boolList makeBoolList(A_fieldList params) {
+static U_boolList makeBoolList(A_fieldList params) {
     A_fieldList cur = params;
     if (params == NULL) return NULL;
-    U_boolList boolList = U_BoolList(1, NULL);
+    U_boolList boolList = U_BoolList(cur->head->escape, NULL);
     U_boolList last = boolList;
     cur = cur->tail;
     while (cur) {
         A_field field = cur->head;
-        last = last->tail = U_BoolList(1, NULL);
+        last = last->tail = U_BoolList(cur->head->escape, NULL);
         cur = cur->tail;
     }
     return boolList;

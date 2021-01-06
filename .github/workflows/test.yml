@@ -15,4 +15,4 @@ jobs:
           make
       - name: Test
         run: |
-          ./gradeMe.sh
+          timeout 30s ./gradeMe.sh

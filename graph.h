@@ -73,4 +73,11 @@ void G_enter(G_table t, G_node node, void *value);
 /* Tell what "node" maps to in table "t" */
 void *G_look(G_table t, G_node node);
 
+G_nodeList nodeListUnion(G_nodeList list, G_nodeList node);
+G_nodeList nodeListJoin(G_nodeList lhs, G_nodeList rhs);
+G_nodeList nodeListDiff(G_nodeList lhs, G_nodeList rhs);
+bool nodeListIn(G_nodeList list, G_node node);
+G_nodeList push(G_nodeList list, G_node node);
+G_node nodePop(G_nodeList list);
+
 #endif

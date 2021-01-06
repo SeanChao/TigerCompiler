@@ -67,6 +67,7 @@ G_nodeList G_nodes(G_graph g) {
     return g->mynodes;
 }
 
+// TODO: duplicated, remove/rename
 /* return true if a is in l list */
 bool G_inNodeList(G_node a, G_nodeList l) {
     G_nodeList p;
@@ -165,3 +166,77 @@ G_table G_empty(void) { return TAB_empty(); }
 void G_enter(G_table t, G_node node, void *value) { TAB_enter(t, node, value); }
 
 void *G_look(G_table t, G_node node) { return TAB_look(t, node); }
+
+G_nodeList nodeListUnion(G_nodeList lhs, G_nodeList rhs) {
+    G_nodeList ret = rhs;
+    for (G_nodeList it = lhs; it; it = it->tail) {
+        G_node lt = it->head;
+        // remove NULL
+        if (lt == NULL) continue;
+        G_nodeList rIt;
+        for (rIt = rhs; rIt; rIt = rIt->tail) {
+            if (lt == rIt->head) break;
+        }
+        if (rIt == NULL) ret = G_NodeList(lt, ret);
+    }
+    return ret;
+}
+
+G_nodeList nodeListJoin(G_nodeList lhs, G_nodeList rhs) {
+    G_nodeList ret = NULL;
+    for (G_nodeList lIt = lhs; lIt; lIt = lIt->tail) {
+        G_node nl = lIt->head;
+        for (G_nodeList rIt = rhs; rIt; rIt = rIt->tail) {
+            G_node nr = rIt->head;
+            if (nl == nr) ret = G_NodeList(nl, ret);
+        }
+    }
+    return ret;
+}
+
+G_nodeList nodeListDiff(G_nodeList lhs, G_nodeList rhs) {
+    // {x| x in lhs and x not in rhs}
+    G_nodeList ret = NULL;
+    for (G_nodeList lIt = lhs; lIt; lIt = lIt->tail) {
+        G_node nl = lIt->head;
+        G_nodeList rIt = NULL;
+        for (rIt = rhs; rIt; rIt = rIt->tail) {
+            G_node nr = rIt->head;
+            if (nl == nr) break;
+        }
+        if (rIt == NULL) ret = G_NodeList(nl, ret);
+    }
+    return ret;
+}
+
+bool nodeListIn(G_nodeList list, G_node node) {
+    for (G_nodeList it = list; it; it = it->tail) {
+        G_node n = it->head;
+        if (n == node) return TRUE;
+    }
+    return FALSE;
+}
+
+G_nodeList push(G_nodeList list, G_node node) {
+    if (list == NULL) return G_NodeList(node, NULL);
+    G_nodeList it;
+    for (it = list; it->tail; it = it->tail)
+        ;
+    it->tail = G_NodeList(node, NULL);
+    return list;
+}
+
+G_node nodePop(G_nodeList list) {
+    if (list == NULL) return NULL;
+    if (list->tail == NULL) {
+        G_node n = list->head;
+        list->head = NULL;
+        return n;
+    }
+    G_nodeList it;
+    G_nodeList prev = list;
+    for (it = list; it->tail; it = it->tail) prev = it;
+    G_node last = prev->tail->head;
+    prev->tail = NULL;
+    return last;
+}

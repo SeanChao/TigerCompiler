@@ -17,14 +17,10 @@ struct Tr_access_ {
     F_access access;
 };
 
-struct Tr_accessList_ {
-    Tr_access head;
-    Tr_accessList tail;
-};
-
 struct Tr_level_ {
     F_frame frame;
     Tr_level parent;
+    Tr_accessList accessList;
 };
 
 typedef struct patchList_ *patchList;
@@ -48,10 +44,6 @@ struct Tr_exp_ {
     } u;
 };
 
-struct Tr_expList_ {
-    Tr_exp head;
-    Tr_expList tail;
-};
 static patchList PatchList(Temp_label *head, patchList tail);
 
 Tr_exp Tr_new();
@@ -142,6 +134,8 @@ static struct Cx unCx(Tr_exp e) {
             return cx;
         case Tr_cx:
             return e->u.cx;
+        case Tr_nx:
+            break;
     }
     assert(0);
 }
@@ -186,37 +180,60 @@ Tr_level Tr_outermost() {
     return level;
 }
 
+static Tr_access Tr_Access(Tr_level l, F_access fAccess) {
+    Tr_access acc = checked_malloc(sizeof(*acc));
+    acc->level = l;
+    acc->access = fAccess;
+    return acc;
+}
+
+Tr_accessList Tr_AccessList(Tr_access head, Tr_accessList tail) {
+    Tr_accessList a = checked_malloc(sizeof(*a));
+    a->head = head;
+    a->tail = tail;
+    return a;
+}
+
+static Tr_accessList buildTrAccessListFromFrame(Tr_level lv) {
+    Tr_accessList head = NULL;
+    Tr_accessList tail = NULL;
+    // skip the static link
+    F_accessList f = F_formalAccessList(lv->frame)->tail;
+    for (; f; f = f->tail) {
+        Tr_access a = Tr_Access(lv, f->head);
+        if (head == NULL) {
+            head = tail = Tr_AccessList(a, NULL);
+        } else {
+            tail->tail = Tr_AccessList(a, NULL);
+            tail = tail->tail;
+        }
+    }
+    return head;
+}
+
 Tr_level Tr_newLevel(Tr_level parent, Temp_label name, U_boolList formals) {
     // Adds an extra element to the formal parameter list for the static link
     Tr_level level = checked_malloc(sizeof(*level));
     level->frame = F_newFrame(name, U_BoolList(TRUE, formals));
     level->parent = parent;
+    level->accessList = buildTrAccessListFromFrame(level);
     return level;
 }
 
-Tr_access Tr_allocLocalInReg(Tr_level level) {
-    Tr_access access = checked_malloc(sizeof(*access));
-    access->level = level;
-}
-
-Tr_access Tr_allocLocalInFrame(Tr_level level) {
-    F_frame frame = level->frame;
-    F_access fAcc = F_allocLocal(level->frame, TRUE);
+Tr_access Tr_allocLocal(Tr_level level, bool escape) {
+    F_access fAcc = F_allocLocal(level->frame, escape);
     Tr_access access = checked_malloc(sizeof(*access));
     access->level = level;
     access->access = fAcc;
     return access;
 }
 
-Tr_access Tr_allocLocal(Tr_level level, bool escape) {
-    return escape == TRUE ? Tr_allocLocalInFrame(level)
-                          : Tr_allocLocalInReg(level);
-}
-
 Tr_exp Tr_new() {
     Tr_exp exp = checked_malloc(sizeof(*exp));
     return exp;
 }
+
+Tr_accessList Tr_formals(Tr_level level) { return level->accessList; }
 
 Tr_exp Tr_SimpleVar(Tr_access access, Tr_level level) {
     // FIXME: fix frame offset
@@ -270,15 +287,24 @@ Tr_exp Tr_opExp(A_oper op, Tr_exp left, Tr_exp right) {
     static T_relOp opTable[] = {0, 1, 2, 3, 4, 5, T_lt, T_le, T_gt, T_ge};
     T_binOp binOp;
     switch (op) {
-        case A_plusOp:
+        case A_plusOp: {
             binOp = T_plus;
-        case A_minusOp:
+            T_exp exp = T_Binop(binOp, unEx(left), unEx(right));
+            return Tr_Ex(exp);
+        }
+        case A_minusOp: {
             binOp = T_minus;
-        case A_timesOp:
+            T_exp exp = T_Binop(binOp, unEx(left), unEx(right));
+            return Tr_Ex(exp);
+        }
+        case A_timesOp: {
             binOp = T_mul;
+            T_exp exp = T_Binop(binOp, unEx(left), unEx(right));
+            return Tr_Ex(exp);
+        }
         case A_divideOp: {
             binOp = T_div;
-            T_exp exp = T_Binop(op, unEx(left), unEx(right));
+            T_exp exp = T_Binop(binOp, unEx(left), unEx(right));
             return Tr_Ex(exp);
         }
         case A_eqOp:
@@ -318,10 +344,12 @@ Tr_exp Tr_RecordExp(Tr_expList recList) {
     }
     stm->u.SEQ.right = init->u.SEQ.right;
     // Allocate heap memory for the record
-    stm->u.SEQ.left = T_Move(
-        T_Temp(recTemp), T_Call(T_Name(Temp_namedlabel("malloc")),
-                                T_ExpList(T_Const(size * F_wordSize), NULL)));
-    return Tr_Nx(stm);
+    stm->u.SEQ.left =
+        T_Move(T_Temp(recTemp),
+               F_externalCall("allocRecord",
+                              T_ExpList(T_Const(size * F_wordSize), NULL)));
+    // return Tr_Nx(stm);
+    return Tr_Ex(T_Eseq(stm, T_Temp(recTemp)));
 }
 
 Tr_exp Tr_SeqExp(Tr_exp head, Tr_exp tail) {
@@ -331,14 +359,13 @@ Tr_exp Tr_SeqExp(Tr_exp head, Tr_exp tail) {
     return Tr_Ex(seq);
 }
 
-Tr_exp Tr_EseqExp(Tr_exp list, Tr_exp newChild) {
-    if (newChild == NULL) return Tr_Ex(T_Eseq(unNx(list), NULL));
-    T_exp eseqPtr = list->u.ex;
-    while (eseqPtr->u.ESEQ.exp) {
-        eseqPtr = eseqPtr->u.ESEQ.exp;
+Tr_exp Tr_listToExp(Tr_expList exps) {
+    T_exp l = unEx(exps->head);
+    exps = exps->tail;
+    for (; exps; exps = exps->tail) {
+        l = T_Eseq(unNx(Tr_Ex(l)), unEx(exps->head));
     }
-    eseqPtr->u.ESEQ.exp = unEx(newChild);
-    return list;
+    return Tr_Ex(l);
 }
 
 Tr_exp Tr_assignExp(Tr_exp var, Tr_exp val) {
@@ -355,9 +382,8 @@ Tr_exp Tr_ifThenExp(Tr_exp condTr, Tr_exp thenTr) {
     doPatch(trues, tLabel);
     doPatch(falses, zLabel);
     T_stm condT = cx.stm;
-    T_stm ret =
-        T_Seq(condT, T_Seq(T_Label(tLabel),
-                           T_Seq(unNx(thenTr), T_Seq(T_Label(zLabel), NULL))));
+    T_stm ret = T_Seq(
+        condT, T_Seq(T_Label(tLabel), T_Seq(unNx(thenTr), T_Label(zLabel))));
     return Tr_Nx(ret);
 }
 
@@ -389,9 +415,9 @@ Tr_exp Tr_ifThenElseExp(Tr_exp condTr, Tr_exp thenTr, Tr_exp elseTr) {
     return Tr_Ex(exp);
 }
 
-Tr_exp Tr_whileExp(Tr_exp cond, Tr_exp body) {
+Tr_exp Tr_whileExp(Tr_exp cond, Tr_exp body, Temp_label done) {
     Temp_label test = Temp_newlabel();
-    Temp_label done = Temp_newlabel();
+    // Temp_label done = Temp_newlabel();
     Temp_label loopBody = Temp_newlabel();
     T_Name(test);
     struct Cx cx = unCx(cond);
@@ -403,17 +429,16 @@ Tr_exp Tr_whileExp(Tr_exp cond, Tr_exp body) {
               T_Seq(T_Label(loopBody),
                     T_Seq(unNx(body), T_Seq(T_Jump(T_Name(test),
                                                    Temp_LabelList(test, NULL)),
-                                            T_Exp(T_Name(done)))))));
+                                            T_Label(done))))));
     return Tr_Nx(stm);
 }
 
 Tr_exp Tr_forExp(Tr_access loopVar, Tr_level varLevel, Tr_exp lo, Tr_exp hi,
-                 Tr_exp body) {
+                 Tr_exp body, Temp_label done) {
     Tr_exp loopVarTr = Tr_SimpleVar(loopVar, varLevel);
-    Tr_exp loopVarExp = Tr_assignExp(loopVarTr, lo);
     T_exp hiTemp = T_Temp(Temp_newtemp());
     Temp_label loopBody = Temp_newlabel();
-    Temp_label done = Temp_newlabel();
+    // Temp_label done = Temp_newlabel();
 
     T_stm stm = T_Seq(
         T_Move(unEx(loopVarTr), unEx(lo)),
@@ -438,6 +463,10 @@ Tr_exp Tr_arrayExp(Tr_exp size, Tr_exp eleVal) {
     return Tr_Nx(T_Move(acc, call));
 }
 
+Tr_exp Tr_breakExp(Temp_label label) {
+    return Tr_Nx(T_Jump(T_Name(label), Temp_LabelList(label, NULL)));
+};
+
 Tr_exp Tr_varDec(Tr_access access, Tr_exp init) {
     T_exp acc = F_Exp(access->access, T_Temp(F_FP()));
     T_exp initTree = unEx(init);
@@ -451,7 +480,6 @@ F_fragList progFragList;
 F_fragList last;
 
 void appendFrag(F_frag frag) {
-    F_fragList cur = progFragList;
     if (progFragList == NULL) {
         progFragList = F_FragList(frag, NULL);
         last = progFragList;
@@ -462,7 +490,11 @@ void appendFrag(F_frag frag) {
 
 void Tr_procEntryExit(Tr_level level, Tr_exp body, Tr_accessList formals) {
     // TODO: if proc is void just unNx()
-    T_stm stm = T_Move(T_Temp(Temp_newtemp()), unEx(body));
+    // Make a tempRv to hold return value
+    Temp_temp tempRv = Temp_newtemp();
+    T_stm shiftStm = T_Seq(T_Move(T_Temp(tempRv), unEx(body)),
+                           T_Move(T_Temp(F_Rv()), T_Temp(tempRv)));
+    T_stm stm = F_procEntryExit1(level->frame, shiftStm);
     F_frag frag = F_ProcFrag(stm, level->frame);
     appendFrag(frag);
 }
@@ -538,6 +570,7 @@ void prIrTreeExp(FILE *out, T_exp exp, int pid) {
 }
 
 void printIrStm(FILE *out, T_stm stm, int pid) {
+    if (!stm) return;
     int myid = id();
     switch (stm->kind) {
         case T_SEQ:
@@ -578,21 +611,21 @@ void printIrStm(FILE *out, T_stm stm, int pid) {
     }
 }
 
-void printIR() {
+void printIR(FILE *irOut) {
     F_fragList fragList = Tr_getResult();
-    printf("digraph \"IR Tree\"{\n");
+    fprintf(irOut, "digraph \"IR Tree\"{\n");
     while (fragList) {
         F_frag frag = fragList->head;
         switch (frag->kind) {
             case F_stringFrag: {
                 string str = frag->u.stringg.str;
                 string label = S_name(frag->u.stringg.label);
-                printf("\"%s: %s\"\n", label, str);
+                fprintf(irOut, "\"%s: %s\"\n", label, str);
                 break;
             }
             case F_procFrag: {
                 T_stm t = frag->u.proc.body;
-                printIrStm(stdout, t, 0);
+                printIrStm(irOut, t, 0);
                 // printStmList(stderr, T_StmList(frag->u.proc.body, NULL));
             }
             default:
@@ -600,5 +633,5 @@ void printIR() {
         }
         fragList = fragList->tail;
     }
-    printf("}\n");
+    fprintf(irOut, "}\n");
 }
