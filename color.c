@@ -43,6 +43,7 @@ G_table degree;    // G_node -> int (the degree of a node)
 G_table moveList;  // G_node -> the list of moves it is associated with
 G_table alias;
 G_table color;  // G_node -> Temp_temp, map a node to a machine register
+static G_table nodeCost;  // G_node -> cost of node, spill small first
 
 G_graph interfenceGraph;
 
@@ -73,8 +74,10 @@ static bool Ok(G_node l, G_node r);
 static void freezeMoves(G_node nodes);
 static void combine(G_node u, G_node v);
 
-static bool allAdjacentOk(G_node node);
+static bool allAdjacentOk(G_node v, G_node u);
+
 static int getDegree(G_node node);
+static void setDegree(G_node node, int deg);
 
 static G_nodeList set(G_node node);
 static Live_moveList moveSet(G_node src, G_node dst);
@@ -88,6 +91,20 @@ static void dumpAllMove();
 static void nodeInvariantCheck(G_nodeList nodes);
 void G_nodelistDump(FILE *out, G_nodeList list);
 // defs
+
+static void graphCheck() {
+    G_graph ig = interfenceGraph;
+    for (G_nodeList nodes = G_nodes(ig); nodes; nodes = nodes->tail) {
+        G_node node = nodes->head;
+        int deg = 0;
+        for (G_nodeList it = adjacent(node); it; it = it->tail) {
+            deg++;
+        }
+        // int refDeg = G_look(degree, node);
+        int refDeg = getDegree(node);
+        assert(deg == refDeg);
+    }
+}
 
 /**
  * Initialize
@@ -128,10 +145,11 @@ static void build(Temp_tempList precolor, Live_moveList moves, G_graph ig,
         G_node n = it->head;
         if (!inPrecolored(n)) {
             initial = G_NodeList(n, initial);
-            G_enter(degree, n, G_degree(n) / 2);
+            // G_enter(degree, n, G_degree(n) / 2);
+            setDegree(n, G_degree(n) / 2);
         } else {
-            // G_enter(degree, n, 32768);
-            G_enter(degree, n, G_degree(n) / 2);
+            // G_enter(degree, n, G_degree(n) / 2);
+            setDegree(n, G_degree(n) / 2);
         }
     }
     // assign colors for precolored nodes
@@ -146,14 +164,16 @@ static void build(Temp_tempList precolor, Live_moveList moves, G_graph ig,
 
 static void simplify() {
     G_node node = simplifyWorklist->head;
+    simplifyWorklist = simplifyWorklist->tail;
     selectStack = push(selectStack, node);
     G_nodeList adj = adjacent(node);
     for (G_nodeList nl = adj; nl; nl = nl->tail) decrementDegree(nl->head);
-    simplifyWorklist = simplifyWorklist->tail;
 }
 
 static void coalesce() {
     // coalesce one pair
+    Live_moveList m =
+        Live_MoveList(worklistMoves->src, worklistMoves->dst, NULL);
     G_node x = getAlias(worklistMoves->src);
     G_node y = getAlias(worklistMoves->dst);
     G_node u = x, v = y;
@@ -162,30 +182,30 @@ static void coalesce() {
         v = x;
     }
     worklistMoves = worklistMoves->tail;
-        // nodeInvariantCheck(G_nodes(interfenceGraph));
+    // nodeInvariantCheck(G_nodes(interfenceGraph));
     if (u == v) {
-        coalescedMoves = moveListDiff(coalescedMoves, moveSet(u, v));
+        coalescedMoves = moveListUnion(coalescedMoves, m);
         addWorkList(u);
-        // TODO:
     } else if (inPrecolored(v) || G_goesTo(u, v)) {
-        constrainedMoves = moveListUnion(constrainedMoves, moveSet(u, v));
+        constrainedMoves = moveListUnion(constrainedMoves, m);
         addWorkList(u);
         addWorkList(v);
-    } else if ((inPrecolored(u) && allAdjacentOk(u)) ||
+    } else if ((inPrecolored(u) && allAdjacentOk(v, u)) ||
                (!inPrecolored(u) &&
                 conservative(nodeListUnion(adjacent(u), adjacent(v))))) {
-        coalescedMoves = moveListUnion(coalescedMoves, moveSet(x, y));
+        coalescedMoves = moveListUnion(coalescedMoves, m);
         combine(u, v);
-        nodeInvariantCheck(G_nodes(interfenceGraph));
         addWorkList(u);
-        nodeInvariantCheck(G_nodes(interfenceGraph));
     } else
-        activeMoves = moveListUnion(activeMoves, moveSet(x, y));
+        activeMoves = moveListUnion(activeMoves, m);
 }
 
-static bool allAdjacentOk(G_node u) {
-    for (G_nodeList it = getAdjacent(u); it; it = it->tail) {
-        if (!Ok(u, it->head)) return FALSE;
+/**
+ * forall t in adj(v) => Ok(t, u)
+ */
+static bool allAdjacentOk(G_node v, G_node u) {
+    for (G_nodeList it = getAdjacent(v); it; it = it->tail) {
+        if (!Ok(it->head, u)) return FALSE;
     }
     return TRUE;
 }
@@ -193,7 +213,7 @@ static bool allAdjacentOk(G_node u) {
 static void makeWorkList() {
     for (G_nodeList it = initial; it; it = it->tail) {
         G_node node = it->head;
-        int deg = G_look(degree, node);
+        int deg = getDegree(node);
         if (deg >= K) {
             spillWorklist = nodeListUnion(spillWorklist, set(node));
         } else if (moveRelated(node)) {
@@ -217,28 +237,28 @@ static Live_moveList nodeMoves(G_node node) {
     // dumpAllMove();
     Live_moveList mov = G_look(moveList, node);
     // moves from this node to other nodes
-    for (G_nodeList nl = G_nodes(interfenceGraph); nl; nl = nl->tail) {
-        G_node n = nl->head;
-        if (n == node) continue;
-        int t = Temp_getnum(Live_gtemp(n));
-        Live_moveList ml = G_look(moveList, n);
-        // if (!ml) continue;
-        while (ml) {
-            if (ml->dst == node)
-                mov = moveListUnion(mov, moveSet(ml->src, ml->dst));
-            ml = ml->tail;
-        }
-    }
-    fprintf(stdout, "mov: ");
-    moveListDump(stdout, mov);
+    // for (G_nodeList nl = G_nodes(interfenceGraph); nl; nl = nl->tail) {
+    //     G_node n = nl->head;
+    //     if (n == node) continue;
+    //     int t = Temp_getnum(Live_gtemp(n));
+    //     Live_moveList ml = G_look(moveList, n);
+    //     // if (!ml) continue;
+    //     while (ml) {
+    //         if (ml->dst == node)
+    //             mov = moveListUnion(mov, moveSet(ml->src, ml->dst));
+    //         ml = ml->tail;
+    //     }
+    // }
+    // fprintf(stdout, "mov: ");
+    // moveListDump(stdout, mov);
     return moveListJoin(mov, moveListUnion(activeMoves, worklistMoves));
 }
 
 static bool moveRelated(G_node node) { return nodeMoves(node) != NULL; }
 
 static void decrementDegree(G_node node) {
-    int *d = G_look(degree, node);
-    *d--;
+    int d = getDegree(node) - 1;
+    setDegree(node, d);
     if (d == K && !inPrecolored(node)) {
         enableMoves(nodeListUnion(G_NodeList(node, NULL), getAdjacent(node)));
         spillWorklist = nodeListDiff(spillWorklist, set(node));
@@ -251,8 +271,8 @@ static void decrementDegree(G_node node) {
 
 static void enableMoves(G_nodeList nodes) {
     for (G_nodeList it = nodes; it; it = it->tail) {
-        for (Live_moveList ml = nodeMoves(nodes->head); ml; ml = ml->tail) {
-            G_node node = it->head;
+        G_node node = it->head;
+        for (Live_moveList ml = nodeMoves(node); ml; ml = ml->tail) {
             if (moveListIn(activeMoves, ml)) {
                 activeMoves =
                     moveListDiff(activeMoves, moveSet(ml->src, ml->dst));
@@ -289,8 +309,10 @@ void addEdge(G_node u, G_node v) {
     if (!G_goesTo(u, v)) {
         G_addEdge(u, v);
         G_addEdge(v, u);
-        G_enter(degree, u, getDegree(u) + 1);
-        G_enter(degree, v, getDegree(v) + 1);
+        // G_enter(degree, u, getDegree(u) + 1);
+        // G_enter(degree, v, getDegree(v) + 1);
+        setDegree(u, getDegree(u) + 1);
+        setDegree(v, getDegree(v) + 1);
     }
 }
 
@@ -321,7 +343,7 @@ static void combine(G_node u, G_node v) {
         freezeWorklist = nodeListDiff(freezeWorklist, set(u));
         spillWorklist = nodeListUnion(spillWorklist, set(u));
     }
-    nodeInvariantCheck(G_nodes(interfenceGraph));
+    // nodeInvariantCheck(G_nodes(interfenceGraph));
 }
 
 static void freeze() {
@@ -351,12 +373,11 @@ static void freezeMoves(G_node node) {
 }
 
 static void selectSpill() {
-    // TODO: select using heuristic
     G_node minCost = NULL;
     for (G_nodeList it = spillWorklist; it; it = it->tail) {
         G_node n = it->head;
         if (!minCost) minCost = it->head;
-        if (getDegree(n) < getDegree(minCost)) minCost = n;
+        if (getCost(nodeCost, n) < getCost(nodeCost, minCost)) minCost = n;
     }
     printf("spill %d: deg=%d\n", Temp_getnum(Live_gtemp(minCost)),
            getDegree(minCost));
@@ -369,20 +390,19 @@ static void selectSpill() {
 static void assignColors() {
     while (selectStack && selectStack->head != NULL) {
         G_node n = nodePop(selectStack);
-        // 1 for available, 0 for unavailable
-        // enum COL_STATE okColors[K] = {UNUSED};
         Temp_tempList okColors = precolored;
+        G_nodeList graphAdj = G_adj(n);
         printf("node %d's adjacent: \n", Temp_getnum(Live_gtemp(n)));
-        G_nodelistDump(stdout, adjacent(n));
-        for (G_nodeList it = adjacent(n); it; it = it->tail) {
+        G_nodelistDump(stdout, graphAdj);
+        for (G_nodeList it = graphAdj; it; it = it->tail) {
             G_node w = it->head;
             G_node aliased = getAlias(w);
             if (nodeListIn(nodeListUnion(coloredNodes, precoloredNodes),
                            aliased))
                 okColors = Temp_tempListDiff(
                     okColors, Temp_TempList(getColor(aliased), NULL));
-            printf("OK colors turn into:\n");
-            Temp_dumpList(stdout, okColors);
+            // printf("OK colors turn into:\n");
+            // Temp_dumpList(stdout, okColors);
         }
         if (okColors == NULL) {
             spilledNodes = nodeListUnion(spilledNodes, set(n));
@@ -406,7 +426,7 @@ static void assignColors() {
 
 void G_nodelistDump(FILE *out, G_nodeList list) {
     for (G_nodeList iter = list; iter; iter = iter->tail) {
-        fprintf(out, "temp%d, ", Temp_getnum(G_nodeInfo(iter->head)));
+        fprintf(out, "t%d, ", Temp_getnum(G_nodeInfo(iter->head)));
     }
     fprintf(out, "\n");
 };
@@ -446,6 +466,7 @@ static void dumpAllMove() {
 }
 
 static void nodeInvariantCheck(G_nodeList nodes) {
+    return;
     for (G_nodeList it = nodes; it; it = it->tail) {
         G_node n = it->head;
         // node is always in exactly ont of the sets or lists, these lists/sets
@@ -472,8 +493,13 @@ static void invariantCheck() {
     // degree invariant
 }
 
-struct COL_result COL_color(G_graph ig, Temp_map initial, Temp_tempList regs,
-                            Live_moveList moves, G_table nodeToMove) {
+struct COL_result COL_color(struct Live_graph liveGraph, Temp_map initial,
+                            Temp_tempList regs) {
+    G_graph ig = liveGraph.graph;
+    Live_moveList moves = liveGraph.moves;
+    G_table nodeToMove = liveGraph.nodeToMove;
+    nodeCost = liveGraph.nodeCost;
+
     struct COL_result ret;
     build(regs, moves, ig, nodeToMove);
     makeWorkList();
@@ -495,6 +521,12 @@ struct COL_result COL_color(G_graph ig, Temp_map initial, Temp_tempList regs,
         else if (spillWorklist != NULL)
             selectSpill();
         nodeInvariantCheck(G_nodes(ig));
+        for (G_nodeList it = G_nodes(ig); it; it = it->tail) {
+            G_node n = it->head;
+            printf("node %d's adjacent: \n\t", Temp_getnum(Live_gtemp(n)));
+            G_nodelistDump(stdout, adjacent(n));
+        }
+        // graphCheck();
     } while (!(simplifyWorklist == NULL && worklistMoves == NULL &&
                freezeWorklist == NULL && spillWorklist == NULL));
     assignColors();
@@ -528,14 +560,17 @@ static Live_moveList moveSet(G_node src, G_node dst) {
     return Live_MoveList(src, dst, NULL);
 }
 
-// TODO:
-// static bool inAdjSet(G_node u, G_node v) { return TRUE; }
-static int getDegree(G_node node) { return G_look(degree, node); }
+static int getDegree(G_node node) { return *(int *)G_look(degree, node); }
+static void setDegree(G_node node, int deg) {
+    int *i = checked_malloc(sizeof(int));
+    *i = deg;
+    G_enter(degree, node, i);
+}
+
 static Temp_temp getColor(G_node node) { return G_look(color, node); }
+
 static void setColor(G_node node, Temp_temp machineRegister) {
     G_enter(color, node, machineRegister);
-    // printf("set color %d -> %d\n", Temp_getnum(Live_gtemp(node)),
-    //        Temp_getnum(machineRegister));
 }
 
 static bool inPrecolored(G_node node) {

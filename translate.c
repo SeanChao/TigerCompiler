@@ -241,7 +241,8 @@ Tr_exp Tr_SimpleVar(Tr_access access, Tr_level level) {
     Tr_level decLevel = access->level;
     T_exp exp = T_Temp(F_FP());
     while (level != decLevel) {
-        exp = T_Mem(T_Binop(T_plus, exp, T_Const(2 * F_wordSize)));
+        exp = F_Exp(F_formalAccessList(level->frame)->head, exp);
+        // exp = T_Mem(T_Binop(T_plus, exp, T_Const(2 * F_wordSize)));
         level = level->parent;
     }
     exp = F_Exp(access->access, exp);
@@ -266,7 +267,12 @@ Tr_exp Tr_intExp(int val) { return Tr_Ex(T_Const(val)); }
 
 Tr_exp Tr_stringExp(string str) {
     Temp_label label = Temp_newlabel();
-    F_frag frag = F_StringFrag(label, str);
+    // length information is stroed for processing in doStr
+    int len = (int)strlen(str);
+    char *immediateString = checked_malloc(len + sizeof(len));
+    *(int *)immediateString = len;
+    strcpy(immediateString + sizeof(len), str);
+    F_frag frag = F_StringFrag(label, immediateString);
     appendFrag(frag);
     return Tr_Ex(T_Name(label));
 }
@@ -284,7 +290,7 @@ Tr_exp Tr_callExp(Temp_label funcLabel, Tr_expList args) {
 }
 
 Tr_exp Tr_opExp(A_oper op, Tr_exp left, Tr_exp right) {
-    static T_relOp opTable[] = {0, 1, 2, 3, 4, 5, T_lt, T_le, T_gt, T_ge};
+    static T_relOp opTable[] = {0, 1, 2, 3, T_eq, T_ne, T_lt, T_le, T_gt, T_ge};
     T_binOp binOp;
     switch (op) {
         case A_plusOp: {
@@ -438,11 +444,10 @@ Tr_exp Tr_forExp(Tr_access loopVar, Tr_level varLevel, Tr_exp lo, Tr_exp hi,
     Tr_exp loopVarTr = Tr_SimpleVar(loopVar, varLevel);
     T_exp hiTemp = T_Temp(Temp_newtemp());
     Temp_label loopBody = Temp_newlabel();
-    // Temp_label done = Temp_newlabel();
 
     T_stm stm = T_Seq(
         T_Move(unEx(loopVarTr), unEx(lo)),
-        T_Seq(T_Move(hiTemp, hiTemp),
+        T_Seq(T_Move(hiTemp, unEx(hi)),
               T_Seq(T_Cjump(T_gt, unEx(loopVarTr), hiTemp, done, loopBody),
                     T_Seq(T_Label(loopBody),
                           T_Seq(unNx(body),

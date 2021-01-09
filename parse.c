@@ -19,6 +19,8 @@
 #include "types.h"
 #include "util.h"
 
+#define YYERROR_VERBOSE
+
 extern int yyparse(void);
 extern A_exp absyn_root;
 

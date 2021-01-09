@@ -82,7 +82,7 @@ static void doProc(FILE *out, F_frame frame, T_stm body) {
     AS_printInstrList(stdout, iList, Temp_layerMap(F_tempMap, Temp_name()));
     printf("----======before RA=======-----\n");
 
-    G_graph fg = FG_AssemFlowGraph(iList, frame); /* 10.1 */
+    // G_graph fg = FG_AssemFlowGraph(iList, frame); /* 10.1 */
     allocation = RA_regAlloc(frame, iList);       /* 11 */
 
     printf("----======RA=======-----\n");
@@ -108,12 +108,17 @@ static void doProc(FILE *out, F_frame frame, T_stm body) {
 }
 
 void doStr(FILE *out, Temp_label label, string str) {
+    /**
+     * str format: [size(int: 4 byte) + string data]
+     */
+
     fprintf(out, ".section .rodata\n");
     fprintf(out, ".%s:\n", S_name(label));
 
     int length = *(int *)str;
-    length = length + 4;
+    length = length + sizeof(length);
     fprintf(out, ".string \"");
+    // int i = sizeof(length);
     int i = 0;
     for (; i < length; i++) {
         if ((str[i] < 32) || (str[i] > 176)) {

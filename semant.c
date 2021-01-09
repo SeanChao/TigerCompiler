@@ -485,7 +485,8 @@ Tr_exp transDec(S_table venv, S_table tenv, A_dec d, Tr_level level,
                     f->result ? S_look(tenv, f->result) : Ty_Void();
                 Ty_tyList formalTys = makeFormalTyList(tenv, f->params);
                 U_boolList boolList = makeBoolList(f->params);
-                Temp_label newLevelLabel = Temp_newlabel();
+                // use func name
+                Temp_label newLevelLabel = Temp_namedlabel(S_name(f->name));
                 Tr_level newLevel = Tr_newLevel(level, newLevelLabel, boolList);
                 S_enter(
                     venv, f->name,
@@ -567,7 +568,7 @@ F_fragList SEM_transProg(A_exp exp) {
     S_table venv = E_base_venv();
     S_table tenv = E_base_tenv();
     Tr_level mainLevel = Tr_newLevel(
-        Tr_outermost(), Temp_namedlabel("tigermain"), U_BoolList(TRUE, NULL));
+        Tr_outermost(), Temp_namedlabel("tigermain"),  NULL);
     struct expty prog = transExp(venv, tenv, exp, mainLevel, NULL);
     Tr_procEntryExit(mainLevel, prog.exp, NULL);
     FILE* irOut = fopen("myir.dot", "w");

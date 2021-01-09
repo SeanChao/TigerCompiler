@@ -226,8 +226,11 @@ AS_instrList AS_rewriteSpill(F_frame f, AS_instrList il, Temp_tempList spills) {
         Temp_temp t = spills->head;
         F_access acc = F_allocLocal(f, TRUE);
         AS_instrList i = il;
+        int id = Temp_getnum(t);
+        Temp_temp newTemp = Temp_newtemp();
         for (; i; i = i->tail) {
             AS_instr instr = i->head;
+            AS_print2(stdout, instr);
             if (instr->kind == I_LABEL) continue;
             Temp_tempList dst = NULL, src = NULL;
             if (instr->kind == I_OPER) {
@@ -238,9 +241,9 @@ AS_instrList AS_rewriteSpill(F_frame f, AS_instrList il, Temp_tempList spills) {
                 src = instr->u.MOVE.src;
             }
             if (listLook(src, t)) {
-                Temp_temp newTemp = Temp_newtemp();
                 char buf[256];
-                sprintf(buf, "mov %d(`s0), `d0 # spill src", F_getOffset(acc));
+                sprintf(buf, "mov %d(`s0), `d0 # spill:use%d", F_getOffset(acc),
+                        id);
                 AS_instr newInstr =
                     AS_Oper(String(buf), Temp_TempList(newTemp, NULL),
                             Temp_TempList(F_FP(), NULL), NULL);
@@ -250,9 +253,9 @@ AS_instrList AS_rewriteSpill(F_frame f, AS_instrList il, Temp_tempList spills) {
                 i = i->tail;
             }
             if (listLook(dst, t)) {
-                Temp_temp newTemp = Temp_newtemp();
                 char buf[256];
-                sprintf(buf, "mov `s0, %d(`s1) # spill dst", F_getOffset(acc));
+                sprintf(buf, "mov `s0, %d(`s1) # spill:def%d", F_getOffset(acc),
+                        id);
                 AS_instr newInstr = AS_Oper(
                     String(buf), NULL,
                     Temp_TempList(newTemp, Temp_TempList(F_FP(), NULL)), NULL);
@@ -263,4 +266,8 @@ AS_instrList AS_rewriteSpill(F_frame f, AS_instrList il, Temp_tempList spills) {
         }
     }
     return il;
+}
+
+void AS_print2(FILE *f, AS_instr instr) {
+    AS_print(f, instr, Temp_layerMap(F_tempMap, Temp_name()));
 }

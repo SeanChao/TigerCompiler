@@ -60,7 +60,6 @@ S_table E_base_venv(void) {
     Ty_ty result;
     Ty_tyList formals;
 
-    Temp_label label = NULL;
     Tr_level level;
 
     level = Tr_outermost();
@@ -91,9 +90,10 @@ S_table E_base_venv(void) {
     formals = checked_malloc(sizeof(*formals));
     formals->head = Ty_String();
     formals->tail = NULL;
+// TODO: turn all Temp_newlabel to namedlabel
 
     S_enter(venv, S_Symbol("print"),
-            E_FunEntry(level, Temp_newlabel(), formals, Ty_Void()));
+            E_FunEntry(level, Temp_namedlabel("print"), formals, Ty_Void()));
     S_enter(venv, S_Symbol("printi"),
             E_FunEntry(NULL, Temp_namedlabel("printi"),
                        Ty_TyList(Ty_Int(), NULL), Ty_Void()));

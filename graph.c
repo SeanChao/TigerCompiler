@@ -101,6 +101,8 @@ void G_rmEdge(G_node from, G_node to) {
 
 /**
  * Print a human-readable dump for debugging.
+ * [showInfo(node)]
+ * (key): [...succ]
  */
 void G_show(FILE *out, G_nodeList p, void showInfo(void *)) {
     for (; p != NULL; p = p->tail) {

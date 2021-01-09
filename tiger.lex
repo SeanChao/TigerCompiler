@@ -162,7 +162,7 @@ words   [{digits}{alphabets}]
 <STR>\\\\       {len_adjust(); strcat(sbuf, "\\");}
 <STR>\\[\n\t\f ]+\\     {len_adjust();}
 <STR>\\         {len_adjust();}
-<STR>([_a-zA-Z0-9 \+\-\*\/\.]|\\n|\\t|\\{digits}{3}|\\^{alphabet})+       {len_adjust();strcat(sbuf, getstr(yytext));continue;}
+<STR>([_a-zA-Z0-9 \+\-\*\/\.>]|\\n|\\t|\\{digits}{3}|\\^{alphabet})+       {len_adjust();strcat(sbuf, getstr(yytext));continue;}
 <STR>\"      {len_adjust(); yylval.sval = ((sbuf == NULL) ? NULL : String(sbuf)); sbuf[0]='\0'; BEGIN DEFAULT; return STRING;}
 
 <COMMENT>\/\*       {adjust();com_cnt++;continue;}

@@ -78,10 +78,10 @@ static void munchStm(T_stm stm) {
                 // Temp_temp src = munchExp(src);
                 Temp_temp base = munchExp(dst->u.MEM->u.BINOP.left);
                 char buf[_LEN];
-                sprintf(buf, "movq `s0, %d(`d0) # wow",
+                sprintf(buf, "movq `s0, %d(`s1) # wow",
                         dst->u.MEM->u.BINOP.right->u.CONST);
-                AS_instr instr = AS_Oper(String(buf), L(base, NULL),
-                                         L(munchExp(src), NULL), NULL);
+                AS_instr instr = AS_Oper(String(buf), NULL,
+                                         L(munchExp(src), L(base, NULL)), NULL);
                 emit(instr);
                 return;
             }
@@ -100,8 +100,8 @@ static void munchStm(T_stm stm) {
             if (src->kind == T_CONST) {
                 char buf[_LEN];
                 sprintf(buf, "movq $%d, `d0 # movq imm1", src->u.CONST);
-                AS_instr instr = AS_Oper(String(buf), L(munchExp(dst), NULL),
-                                         L(NULL, NULL), NULL);
+                AS_instr instr =
+                    AS_Oper(String(buf), L(munchExp(dst), NULL), NULL, NULL);
                 emit(instr);
                 return;
             }
@@ -149,27 +149,28 @@ static void munchStm(T_stm stm) {
         case T_LABEL: {
             Temp_label label = stm->u.LABEL;
             char buf[512];
-            sprintf(buf, "%s", Temp_labelstring(label));
+            sprintf(buf, ".%s", Temp_labelstring(label));
             emit(AS_Label(String(buf), label));
             return;
         }
         case T_JUMP: {
             Temp_label target = stm->u.JUMP.exp->u.NAME;
-            emit(AS_Oper("jmp `j0", NULL, NULL,
+            emit(AS_Oper("jmp .`j0 # ocean", NULL, NULL,
                          AS_Targets(Temp_LabelList(target, NULL))));
             return;
         }
         case T_CJUMP: {
+            // TODO: better be named left/right...
             Temp_temp src = munchExp(stm->u.CJUMP.left);
             Temp_temp dst = munchExp(stm->u.CJUMP.right);
             T_relOp op = stm->u.CJUMP.op;
             Temp_label trueLabel = stm->u.CJUMP.true;
             Temp_label falseLabel = stm->u.CJUMP.false;
             string cJmp[] = {"je", "jne", "jl", "jg", "jle", "jge"};
-            // cmq s2, s1: s1 - s2
-            emit(AS_Oper("cmp `d0, `s0", L(dst, NULL), L(src, NULL), NULL));
+            // cmq s0, s1: s1 - s0
+            emit(AS_Oper("cmp `s0, `s1", NULL, L(dst, L(src, NULL)), NULL));
             char buf[_LEN];
-            sprintf(buf, "%s %s # cjump", cJmp[op],
+            sprintf(buf, "%s .%s # cjump", cJmp[op],
                     Temp_labelstring(trueLabel));
             emit(AS_Oper(String(buf), NULL, NULL,
                          AS_Targets(Temp_LabelList(
@@ -191,9 +192,9 @@ Temp_temp munchExp(T_exp exp) {
                 exp->u.BINOP.right->kind == T_CONST) {
                 Temp_temp dst = munchExp(exp->u.BINOP.left);
                 char buf[_LEN];
-                sprintf(buf, "addq %d, `d0", exp->u.BINOP.right->u.CONST);
-                AS_instr instr =
-                    AS_Oper(String(buf), L(dst, NULL), L(NULL, NULL), NULL);
+                sprintf(buf, "addq $%d, `d0 # winter",
+                        exp->u.BINOP.right->u.CONST);
+                AS_instr instr = AS_Oper(String(buf), L(dst, NULL), NULL, NULL);
                 emit(instr);
                 return dst;
             } else if (exp->u.BINOP.op == T_minus &&
@@ -210,8 +211,7 @@ Temp_temp munchExp(T_exp exp) {
                 Temp_temp dst = munchExp(exp->u.BINOP.left);
                 char buf[_LEN];
                 sprintf(buf, "subq $%d, `s0", exp->u.BINOP.right->u.CONST);
-                AS_instr instr =
-                    AS_Oper(String(buf), L(dst, NULL), L(NULL, NULL), NULL);
+                AS_instr instr = AS_Oper(String(buf), L(dst, NULL), NULL, NULL);
                 emit(instr);
                 return dst;
             } else if (exp->u.BINOP.op == T_mul &&
@@ -219,15 +219,14 @@ Temp_temp munchExp(T_exp exp) {
                 Temp_temp dst = munchExp(exp->u.BINOP.left);
                 char buf[_LEN];
                 sprintf(buf, "imul $%d, `d0", exp->u.BINOP.right->u.CONST);
-                AS_instr instr =
-                    AS_Oper(String(buf), L(dst, NULL), L(NULL, NULL), NULL);
+                AS_instr instr = AS_Oper(String(buf), L(dst, NULL), NULL, NULL);
                 emit(instr);
                 return dst;
             }
-            // Match "idivq $src": %rax(quotient), %rdx(remainder) <- %rdx:%rax
+            // idivq $src: %rax(quotient), %rdx(remainder) <- %rdx:%rax // $src
             if (exp->u.BINOP.op == T_div) {
                 Temp_temp src = munchExp(exp->u.BINOP.left);
-                // Temp_temp dst = munchExp(exp->u.BINOP.right);
+                Temp_temp dst = munchExp(exp->u.BINOP.right);
                 AS_instr movSrc = AS_Move("movq `s0, `d0 # div",
                                           L(F_rax(), NULL), L(src, NULL));
                 AS_instr oct =
@@ -235,7 +234,7 @@ Temp_temp munchExp(T_exp exp) {
                             L(F_rax(), NULL), NULL);  // convert to oct word
                 AS_instr div =
                     AS_Oper("idivq `s0", L(F_rdx(), L(F_rax(), NULL)),
-                            L(F_rdx(), L(F_rax(), NULL)), NULL);
+                            L(dst, NULL), NULL);
                 emit(movSrc);
                 emit(oct);
                 emit(div);
@@ -246,7 +245,7 @@ Temp_temp munchExp(T_exp exp) {
             Temp_temp dst = munchExp(exp->u.BINOP.left);
             Temp_temp src = munchExp(exp->u.BINOP.right);
             char buf[_LEN];
-            sprintf(buf, "%s `s0, `d0 #last match", opStr[exp->u.BINOP.op]);
+            sprintf(buf, "%s `s0, `d0 # last match", opStr[exp->u.BINOP.op]);
             AS_instr instr =
                 AS_Oper(String(buf), L(dst, NULL), L(src, L(dst, NULL)), NULL);
             emit(instr);
@@ -258,9 +257,8 @@ Temp_temp munchExp(T_exp exp) {
             if (mem->kind == T_CONST) {
                 // Match movq Imm, %dst
                 char buf[_LEN];
-                sprintf(buf, "movq $%d, `d0", mem->u.CONST);
-                AS_instr instr =
-                    AS_Oper(String(buf), L(val, NULL), L(NULL, NULL), NULL);
+                sprintf(buf, "movq $%d, `d0 # cafe", mem->u.CONST);
+                AS_instr instr = AS_Oper(String(buf), L(val, NULL), NULL, NULL);
                 emit(instr);
                 return val;
             } else if (mem->kind == T_BINOP && mem->u.BINOP.op == T_plus &&
@@ -298,9 +296,9 @@ Temp_temp munchExp(T_exp exp) {
 
         case T_NAME: {
             char buf[_LEN];
-            sprintf(buf, "movq $%s, `d0", Temp_labelstring(exp->u.NAME));
+            sprintf(buf, "leaq .%s(%%rip), `d0", Temp_labelstring(exp->u.NAME));
             Temp_temp r = Temp_newtemp();
-            emit(AS_Oper(String(buf), L(r, NULL), L(NULL, NULL), NULL));
+            emit(AS_Oper(String(buf), L(r, NULL), NULL, NULL));
             return r;
         }
         case T_TEMP: {
@@ -339,7 +337,7 @@ static Temp_tempList munchArgs(int index, T_expList args) {
                      L(r, NULL)));
     } else {
         // push to stack
-        emit(AS_Oper("pushq `s0", L(NULL, NULL), L(r, NULL), NULL));
+        emit(AS_Oper("pushq `s0", NULL, L(r, NULL), NULL));
     }
     Temp_tempList next = munchArgs(index + 1, args->tail);
     return index < 6 ? L(argsTemp[index], next) : NULL;

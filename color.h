@@ -19,7 +19,7 @@ struct COL_result {
  * the graph coloring
  * @param{initial} pre-colored nodes
  */
-struct COL_result COL_color(G_graph ig, Temp_map initial, Temp_tempList regs,
-                            Live_moveList moves, G_table nodeToMove);
+struct COL_result COL_color(struct Live_graph ig, Temp_map initial,
+                            Temp_tempList regs);
 
 #endif

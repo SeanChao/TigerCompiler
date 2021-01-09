@@ -18,14 +18,19 @@
 //         }
 //     }
 // }
+double getCost(G_table t, G_node node) {
+    double *p = G_look(t, node);
+    if (p) return *p;
+    return 0.0;
+}
 
-static Temp_tempList mergeTempList(Temp_tempList l, Temp_tempList r) {
-    for (Temp_tempList it = r; it; it = it->tail) {
-        if (!listLook(l, it->head)) {
-            Temp_append(l, it->head);
-        }
+static void setCost(G_table t, G_node node, double d) {
+    double *p = G_look(t, node);
+    if (!p) {
+        p = checked_malloc(sizeof(double));
+        G_enter(t, node, p);
     }
-    return l;
+    *p = d;
 }
 
 Live_moveList Live_MoveList(G_node src, G_node dst, Live_moveList tail) {
@@ -60,6 +65,18 @@ struct Live_graph Live_liveness(G_graph flow) {
             G_node node = nl->head;
             Temp_tempList nodeIn = G_look(liveIn, node);
             Temp_tempList nodeOut = G_look(liveOut, node);
+            // out <- union of all successors' in
+            G_nodeList succ = G_succ(node);
+            for (G_nodeList iter = succ; iter; iter = iter->tail) {
+                G_node s = iter->head;
+                Temp_tempList succIn = G_look(liveIn, s);
+                for (Temp_tempList tIter = succIn; tIter; tIter = tIter->tail) {
+                    if (tIter->head && !listLook(nodeOut, tIter->head)) {
+                        nodeOut = Temp_TempList(tIter->head, nodeOut);
+                        nochange = FALSE;
+                    }
+                }
+            }
             // in <- use + (out - def)
             // add nodes in use
             Temp_tempList use = FG_use(node);
@@ -75,20 +92,8 @@ struct Live_graph Live_liveness(G_graph flow) {
             for (Temp_tempList iter = nodeOut; iter; iter = iter->tail) {
                 Temp_temp t = iter->head;
                 if (t && !listLook(nodeIn, t) && !listLook(def, t)) {
-                    nodeIn = nodeListUnion(Temp_TempList(t, NULL), nodeIn);
+                    nodeIn = Temp_tempListUnion(Temp_TempList(t, NULL), nodeIn);
                     nochange = FALSE;
-                }
-            }
-            // out <- union of all successors' in
-            G_nodeList succ = G_succ(node);
-            for (G_nodeList iter = succ; iter; iter = iter->tail) {
-                G_node s = iter->head;
-                Temp_tempList succIn = G_look(liveIn, s);
-                for (Temp_tempList tIter = succIn; tIter; tIter = tIter->tail) {
-                    if (tIter->head && !listLook(nodeOut, tIter->head)) {
-                        nodeOut = Temp_TempList(tIter->head, nodeOut);
-                        nochange = FALSE;
-                    }
                 }
             }
             // fprintf(stderr, "nodeout:");
@@ -96,17 +101,18 @@ struct Live_graph Live_liveness(G_graph flow) {
             G_enter(liveIn, node, nodeIn);
             G_enter(liveOut, node, nodeOut);
 
-            for (G_nodeList it = G_nodes(flow); it; it = it->tail) {
-                G_node node = it->head;
-                printCfgInfo(G_nodeInfo(node));
-                if (FG_def(node) == NULL) continue;
-                Temp_tempList tempOut = G_look(liveOut, node);
-                Temp_tempList tempIn = G_look(liveIn, node);
-                printf("[out]\t");
-                Temp_dumpList(stdout, tempOut);
-                printf("[in]\t");
-                Temp_dumpList(stdout, tempIn);
-            }
+            // printf("==iter-liveness\n");
+            // for (G_nodeList it = G_nodes(flow); it; it = it->tail) {
+            //     G_node node = it->head;
+            //     printCfgInfo(G_nodeInfo(node));
+            //     if (FG_def(node) == NULL) continue;
+            //     Temp_tempList tempOut = G_look(liveOut, node);
+            //     Temp_tempList tempIn = G_look(liveIn, node);
+            //     printf("[out]\t");
+            //     Temp_dumpList(stdout, tempOut);
+            //     printf("[in]\t");
+            //     Temp_dumpList(stdout, tempIn);
+            // }
         }
     }
 
@@ -141,6 +147,9 @@ struct Live_graph Live_liveness(G_graph flow) {
         Temp_tempList l = FG_def(node);
         if (l == NULL) continue;
         Temp_tempList r = G_look(liveOut, node);
+        if (FG_isMove(node)) {
+            r = Temp_tempListDiff(r, FG_use(node));
+        }
         // Temp_dumpList(stdout, l);
         // printf("x ");
         // Temp_dumpList(stdout, r);
@@ -176,21 +185,48 @@ struct Live_graph Live_liveness(G_graph flow) {
                 Live_MoveList(srcNode, dstNode, G_look(nodeToMove, srcNode)));
         }
     }
+    // Calculate cost for all temps
+    G_table nodeCost = G_empty();
+    for (G_nodeList it = G_nodes(flow); it; it = it->tail) {
+        G_node node = it->head;
+        Temp_tempList def = FG_def(node);
+        Temp_tempList use = FG_use(node);
+        for (Temp_tempList it = def; it; it = it->tail) {
+            G_node tempNode = TAB_look(interferenceMap, it->head);
+            setCost(nodeCost, tempNode, getCost(nodeCost, tempNode) + 1.0);
+        }
+        for (Temp_tempList it = use; it && it->head; it = it->tail) {
+            G_node tempNode = TAB_look(interferenceMap, it->head);
+            setCost(nodeCost, tempNode, getCost(nodeCost, tempNode) + 1.0);
+        }
+    }
+    G_nodeList nl = G_nodes(interference);
+    for (; nl; nl = nl->tail) {
+        G_node n = nl->head;
+        setCost(nodeCost, n, getCost(nodeCost, n) / (G_degree(n) / 2));
+    }
+
     lg.graph = interference;
     lg.moves = moveList;
     lg.nodeToMove = nodeToMove;
+    lg.nodeCost = nodeCost;
 
-    printf("liveness:\n");
+    printf("====liveness:\n");
     for (G_nodeList it = G_nodes(flow); it; it = it->tail) {
         G_node node = it->head;
         printCfgInfo(G_nodeInfo(node));
-        if (FG_def(node) == NULL) continue;
+        // if (FG_def(node) == NULL) continue;
         Temp_tempList tempOut = G_look(liveOut, node);
         Temp_tempList tempIn = G_look(liveIn, node);
         printf("[out]\t");
         Temp_dumpList(stdout, tempOut);
         printf("[in]\t");
         Temp_dumpList(stdout, tempIn);
+    }
+    for (G_nodeList it = G_nodes(interference); it; it = it->tail) {
+        G_node node = it->head;
+        printf("node %d cost %f\n", Temp_getnum(Live_gtemp(node)),
+               getCost(nodeCost, node));
     }
     return lg;
 }

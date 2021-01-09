@@ -68,17 +68,20 @@ T_exp F_Exp(F_access acc, T_exp framePtr) {
 }
 
 static F_access F_AccessInFrame(F_frame frame) {
-    F_accessList locals = frame->localVars;
     F_access access = checked_malloc(sizeof(*access));
-    access->kind = inFrame;
     int offset = -(frame->size);
-    while (locals->tail) {
-        locals = locals->tail;
-        // offset -= F_wordSize;
-    }
+    access->kind = inFrame;
     access->u.offset = offset;
-    locals->tail = F_AccessList(access, NULL);
     frame->size += F_wordSize;
+    F_accessList locals = frame->localVars;
+    if (!locals)
+        frame->localVars = F_AccessList(access, NULL);
+    else {
+        while (locals->tail) {
+            locals = locals->tail;
+        }
+        locals->tail = F_AccessList(access, NULL);
+    }
     return access;
 }
 
@@ -101,14 +104,17 @@ F_accessList F_AccessList(F_access head, F_accessList tail) {
     return list;
 }
 
-F_accessList createAccessList(U_boolList formals) {
+F_accessList createAccessList(F_frame frame, U_boolList formals) {
     U_boolList cur = formals;
-    F_access head = F_AccessInReg(Temp_newtemp());
+    F_access head =
+        cur->head ? F_AccessInFrame(frame) : F_AccessInReg(Temp_newtemp());
     F_accessList last = F_AccessList(head, NULL);
     F_accessList list = last;
     cur = cur->tail;
     while (cur) {
-        last = last->tail = F_AccessList(F_AccessInReg(Temp_newtemp()), NULL);
+        last = last->tail = F_AccessList(
+            cur->head ? F_AccessInFrame(frame) : F_AccessInReg(Temp_newtemp()),
+            NULL);
         cur = cur->tail;
     }
     return list;
@@ -121,9 +127,10 @@ F_frame F_newFrame(Temp_label name, U_boolList Tr_formals) {
     F_frame frame = checked_malloc(sizeof(*frame));
     frame->name = name;
     frame->escapeList = Tr_formals;
-    frame->formals = createAccessList(Tr_formals);
-    frame->localVars = createAccessList(Tr_formals);
     frame->size = 0;
+    frame->formals = createAccessList(frame, Tr_formals);
+    // frame->localVars = createAccessList(frame, Tr_formals);
+    // frame->localVars = F_AccessList(NULL, NULL);
     return frame;
 }
 
@@ -175,9 +182,16 @@ T_stm F_procEntryExit1(F_frame frame, T_stm stm) {
             src = T_Temp(paramsTemp->head);
             dst = F_Exp(acc, T_Temp(F_FP()));
             paramsTemp = paramsTemp->tail;
+        } else if (acc->kind == inFrame && paramsTemp) {
+            // within first 6 temp, but the parameter is escaped, so put it in
+            // mem
+            src = T_Temp(paramsTemp->head);
+            dst = F_Exp(acc, T_Temp(F_FP()));
+            paramsTemp = paramsTemp->tail;
         } else {
             // push to stack
             // skip 2 words for return addr and saved %rbp
+            // TODO: no need for paramRegisterNum
             src = T_Mem(
                 T_Binop(T_plus, T_Temp(F_FP()),
                         T_Const((nth - paramRegistersNum + 2) * F_wordSize)));
@@ -202,8 +216,9 @@ T_stm F_procEntryExit1(F_frame frame, T_stm stm) {
                          ? T_Seq(T_Move(T_Temp(reg), T_Temp(t)), restoreStm)
                          : T_Move(T_Temp(reg), T_Temp(t));
     }
-    return shift ? T_Seq(saveStm, T_Seq(shift, T_Seq(stm, restoreStm)))
-                 : T_Seq(saveStm, T_Seq(stm, restoreStm));
+    // return shift ? T_Seq(saveStm, T_Seq(shift, T_Seq(stm, restoreStm)))
+    //  : T_Seq(saveStm, T_Seq(stm, restoreStm));
+    return shift ? T_Seq(shift, stm) : stm;
 }
 
 /**
@@ -221,38 +236,45 @@ AS_instrList F_procEntryExit2(AS_instrList body) {
                            NULL));
 }
 
+/**
+ * Creates the procedure prologue and epilogue assembly language
+ */
 AS_proc F_procEntryExit3(F_frame frame, AS_instrList body) {
     // prolog
+    int size = frame->size;
     char prolog[1024];
     sprintf(prolog, "# procEntryExit3 procedure %s", S_name(frame->name));
     char fmtStr[] =
         "pushq %%rbp\n"
         "movq %%rsp, %%rbp\n"
         "subq $%d, %%rsp\n";
-    sprintf(prolog, fmtStr, frame->size);
+    sprintf(prolog, fmtStr, size);
     // epilog
     char epilog[1024];
-    sprintf(epilog, "leaveq\nret\n");
+    sprintf(epilog,
+            "addq $%d, %%rsp\n"
+            "leaveq\nret\n",
+            size);
     return AS_Proc(String(prolog), body, String(epilog));
 }
 
 void F_new() {
-    rax = Temp_newtemp(); // 100
+    rax = Temp_newtemp();  // 100
     rbx = Temp_newtemp();
     rcx = Temp_newtemp();
     rdx = Temp_newtemp();
     rdi = Temp_newtemp();
-    rsi = Temp_newtemp(); // 105
+    rsi = Temp_newtemp();  // 105
     rbp = Temp_newtemp();
     rsp = Temp_newtemp();
     r8 = Temp_newtemp();
     r9 = Temp_newtemp();
-    r10 = Temp_newtemp(); // 110
+    r10 = Temp_newtemp();  // 110
     r11 = Temp_newtemp();
     r12 = Temp_newtemp();
     r13 = Temp_newtemp();
     r14 = Temp_newtemp();
-    r15 = Temp_newtemp(); // 115
+    r15 = Temp_newtemp();  // 115
     // RBX, RBP, RDI, RSI, RSP, R12, R13, R14, and R15
     calleeSaves = Temp_TempList(
         rbp,

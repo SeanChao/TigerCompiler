@@ -50,9 +50,16 @@ G_graph FG_AssemFlowGraph(AS_instrList il, F_frame f) {
     // create nodes for every instruction
     G_node last = NULL;
     for (AS_instrList iter = il; iter; iter = iter->tail) {
+        // AS_print(stdout, iter->head, Temp_layerMap(F_tempMap, Temp_name()));
         G_node node = G_Node(g, iter->head);
-        if (last != NULL) G_addEdge(last, node);
-        last = node;
+        // if jmp, no sequential flow
+        if (iter->head->kind == I_OPER && iter->head->u.OPER.jumps != NULL) {
+            if (last != NULL) G_addEdge(last, node);
+            last = NULL;
+        } else {
+            if (last != NULL) G_addEdge(last, node);
+            last = node;
+        }
         // label -> node: for jump flow construction
         if (iter->head->kind == I_LABEL)
             TAB_enter(labelNodeMap, iter->head->u.LABEL.label, node);
@@ -62,6 +69,7 @@ G_graph FG_AssemFlowGraph(AS_instrList il, F_frame f) {
          nodeIter = nodeIter->tail) {
         G_node node = nodeIter->head;
         AS_instr instr = G_nodeInfo(node);
+        // AS_print(stdout, instr, Temp_layerMap(F_tempMap, Temp_name()));
         if (instr->kind == I_OPER) {
             AS_targets jmpTargets = instr->u.OPER.jumps;
             if (jmpTargets == NULL) continue;
