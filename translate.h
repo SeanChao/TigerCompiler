@@ -46,7 +46,8 @@ Tr_exp Tr_subscriptVar(Tr_exp array, Tr_exp index);
 Tr_exp Tr_intExp(int val);
 Tr_exp Tr_nilExp();
 Tr_exp Tr_stringExp(string str);
-Tr_exp Tr_callExp(Temp_label funcLabel, Tr_expList args);
+Tr_exp Tr_callExp(Temp_label funcLabel, Tr_expList args, Tr_level caller,
+                  Tr_level callee);
 Tr_exp Tr_opExp(A_oper op, Tr_exp left, Tr_exp right);
 Tr_exp Tr_RecordExp(Tr_expList recList);
 Tr_exp Tr_SeqExp(Tr_exp head, Tr_exp tail);

@@ -127,8 +127,9 @@ F_frame F_newFrame(Temp_label name, U_boolList Tr_formals) {
     F_frame frame = checked_malloc(sizeof(*frame));
     frame->name = name;
     frame->escapeList = Tr_formals;
-    frame->size = 0;
+    frame->size = 8;
     frame->formals = createAccessList(frame, Tr_formals);
+    frame->localVars = NULL;
     // frame->localVars = createAccessList(frame, Tr_formals);
     // frame->localVars = F_AccessList(NULL, NULL);
     return frame;
@@ -175,7 +176,13 @@ T_stm F_procEntryExit1(F_frame frame, T_stm stm) {
     T_stm shift = NULL;
     Temp_tempList paramsTemp = F_paramRegisters();
     int nth = 0;
-    for (F_accessList al = frame->formals->tail; al; al = al->tail) {
+    // put static link
+    // F_access staticLink = frame->formals->head;
+    // T_exp src = T_Temp(paramsTemp->head);
+    // T_exp dst = F_Exp(staticLink, T_Temp(F_FP()));
+    // paramsTemp = paramsTemp->tail;
+    // shift = T_Move(dst, src);
+    for (F_accessList al = frame->formals; al; al = al->tail) {
         F_access acc = al->head;
         T_exp src = NULL, dst = NULL;
         if (acc->kind == inReg && paramsTemp) {

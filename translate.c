@@ -175,9 +175,11 @@ Tr_expList Tr_ExpListAppend(Tr_expList list, Tr_expList tail) {
     return tail;
 }
 
+static Tr_level Tr_outermostLevel = NULL;
 Tr_level Tr_outermost() {
-    Tr_level level = checked_malloc(sizeof(*level));
-    return level;
+    Tr_outermostLevel = Tr_outermostLevel ? Tr_outermostLevel
+                                          : checked_malloc(sizeof(*Tr_outermostLevel));
+    return Tr_outermostLevel;
 }
 
 static Tr_access Tr_Access(Tr_level l, F_access fAccess) {
@@ -214,7 +216,8 @@ static Tr_accessList buildTrAccessListFromFrame(Tr_level lv) {
 Tr_level Tr_newLevel(Tr_level parent, Temp_label name, U_boolList formals) {
     // Adds an extra element to the formal parameter list for the static link
     Tr_level level = checked_malloc(sizeof(*level));
-    level->frame = F_newFrame(name, U_BoolList(TRUE, formals));
+    // static link as the first parameter
+    level->frame = F_newFrame(name, U_BoolList(FALSE, formals));
     level->parent = parent;
     level->accessList = buildTrAccessListFromFrame(level);
     return level;
@@ -236,13 +239,11 @@ Tr_exp Tr_new() {
 Tr_accessList Tr_formals(Tr_level level) { return level->accessList; }
 
 Tr_exp Tr_SimpleVar(Tr_access access, Tr_level level) {
-    // FIXME: fix frame offset
     // Follow static links
     Tr_level decLevel = access->level;
     T_exp exp = T_Temp(F_FP());
     while (level != decLevel) {
         exp = F_Exp(F_formalAccessList(level->frame)->head, exp);
-        // exp = T_Mem(T_Binop(T_plus, exp, T_Const(2 * F_wordSize)));
         level = level->parent;
     }
     exp = F_Exp(access->access, exp);
@@ -271,13 +272,15 @@ Tr_exp Tr_stringExp(string str) {
     int len = (int)strlen(str);
     char *immediateString = checked_malloc(len + sizeof(len));
     *(int *)immediateString = len;
-    strcpy(immediateString + sizeof(len), str);
+    strncpy(immediateString + sizeof(len), str, len);
     F_frag frag = F_StringFrag(label, immediateString);
     appendFrag(frag);
     return Tr_Ex(T_Name(label));
 }
 
-Tr_exp Tr_callExp(Temp_label funcLabel, Tr_expList args) {
+Tr_exp Tr_callExp(Temp_label funcLabel, Tr_expList args, Tr_level caller,
+                  Tr_level callee) {
+    // process normal arguments
     T_expList argStm = T_ExpList(NULL, NULL);
     T_expList last = argStm;
     Tr_expList cur = args;
@@ -285,7 +288,21 @@ Tr_exp Tr_callExp(Temp_label funcLabel, Tr_expList args) {
         last = last->tail = T_ExpList(unEx(cur->head), NULL);
         cur = cur->tail;
     }
-    T_exp exp = T_Call(T_Name(funcLabel), argStm->tail);
+    T_exp exp;
+    if (callee == Tr_outermost()) {
+        exp = T_Call(T_Name(funcLabel), argStm->tail);
+    } else {
+        // set up static link
+        T_exp fp = T_Temp(F_FP());
+        Tr_level lv = caller;
+        T_exp staticLink = fp;
+        while (lv != callee->parent) {
+            staticLink =
+                (T_Binop(T_plus, staticLink, T_Const(F_wordSize * 2)));
+            lv = lv->parent;
+        }
+        exp = T_Call(T_Name(funcLabel), T_ExpList(staticLink, argStm->tail));
+    }
     return Tr_Ex(exp);
 }
 
@@ -465,7 +482,7 @@ Tr_exp Tr_arrayExp(Tr_exp size, Tr_exp eleVal) {
     T_exp acc = T_Temp(Temp_newtemp());
     T_exp call = F_externalCall(
         "initArray", T_ExpList(unEx(size), T_ExpList(unEx(eleVal), NULL)));
-    return Tr_Nx(T_Move(acc, call));
+    return Tr_Ex(T_Eseq(T_Move(acc, call), acc));
 }
 
 Tr_exp Tr_breakExp(Temp_label label) {

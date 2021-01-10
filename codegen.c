@@ -39,38 +39,85 @@ static void munchStm(T_stm stm) {
         case T_MOVE: {
             T_exp dst = stm->u.MOVE.dst;
             T_exp src = stm->u.MOVE.src;
+            char buf[_LEN];
             if (dst->kind == T_TEMP && src->kind == T_TEMP) {
-                emit(AS_Move("movq `s0, `d0", L(dst->u.TEMP, NULL),
+                emit(AS_Move("movq `s0, `d0 # cat", L(dst->u.TEMP, NULL),
                              L(src->u.TEMP, NULL)));
+                return;
+            } else if (dst->kind == T_TEMP && src->kind == T_BINOP &&
+                       src->u.BINOP.op == T_plus &&
+                       src->u.BINOP.right->kind == T_CONST) {
+                sprintf(buf, "leaq %d(`s0), `d0", src->u.BINOP.right->u.CONST);
+                emit(AS_Oper(String(buf), L(dst->u.TEMP, NULL),
+                             L(munchExp(src->u.BINOP.left), NULL), NULL));
                 return;
             }
             // Move(Mem, Mem)
             if (src->kind == T_MEM && dst->kind == T_MEM) {
                 // in x86-64 arch, no direct instruction support
+                // Temp_temp temp = Temp_newtemp();
+                Temp_temp val = munchExp(src);
+                Temp_temp dstAddr = munchExp(dst->u.MEM);
+                AS_instr move2Mem = AS_Oper("movq `s0, (`s1) # m2m-2", NULL,
+                                            L(val, L(dstAddr, NULL)), NULL);
+                emit(move2Mem);
+                return;
+            }
+            if (src->kind == T_MEM && dst->kind == T_MEM) {
+                // in x86-64 arch, no direct instruction support
                 Temp_temp temp = Temp_newtemp();
                 Temp_temp srcAddr = munchExp(src->u.MEM);
                 Temp_temp dstAddr = munchExp(dst->u.MEM);
-                AS_instr move2Temp = AS_Oper("movq (`s0), `d0", L(temp, NULL),
-                                             L(srcAddr, NULL), NULL);
-                AS_instr move2Mem = AS_Oper("movq `s0, (`d0)", L(dstAddr, NULL),
-                                            L(temp, NULL), NULL);
+                AS_instr move2Temp =
+                    AS_Oper("movq (`s0), `d0 # m2m-1", L(temp, NULL),
+                            L(srcAddr, NULL), NULL);
+                AS_instr move2Mem = AS_Oper("movq `s0, (`s1) # m2m-2", NULL,
+                                            L(temp, L(dstAddr, NULL)), NULL);
                 emit(move2Temp);
                 emit(move2Mem);
                 return;
             }
             // mov Imm(%src), %dst
             // Move(Mem ( + (%, CONST)), %)
-            if (dst->kind == T_MEM && dst->u.MEM->kind == T_BINOP &&
-                dst->u.MEM->u.BINOP.op == T_plus &&
-                dst->u.MEM->u.BINOP.left->kind == T_CONST) {
+            if (src->kind == T_MEM && src->u.MEM->kind == T_BINOP &&
+                src->u.MEM->u.BINOP.op == T_plus &&
+                src->u.MEM->u.BINOP.right->kind == T_CONST) {
                 // Temp_temp src = munchExp(src);
-                Temp_temp base = munchExp(dst->u.MEM->u.BINOP.right);
+                Temp_temp base = munchExp(src->u.MEM->u.BINOP.left);
                 char buf[_LEN];
                 sprintf(buf, "movq %d(`s0), `d0 # frodo",
-                        dst->u.MEM->u.BINOP.left->u.CONST);
-                AS_instr instr = AS_Oper(String(buf), L(base, NULL),
-                                         L(munchExp(src), NULL), NULL);
+                        src->u.MEM->u.BINOP.right->u.CONST);
+                Temp_temp d = munchExp(dst);
+                AS_instr instr =
+                    AS_Oper(String(buf), L(d, NULL), L(base, NULL), NULL);
                 emit(instr);
+                return;
+            } else if (src->kind == T_CONST && dst->kind == T_MEM &&
+                       dst->u.MEM->kind == T_BINOP &&
+                       dst->u.MEM->u.BINOP.right &&
+                       dst->u.MEM->u.BINOP.right->kind == T_CONST) {
+                // movq Imm, Imm(r)
+                sprintf(buf, "movq $%d, %d(`s0) # iir", src->u.CONST,
+                        dst->u.MEM->u.BINOP.right->u.CONST);
+                emit(AS_Oper(String(buf), NULL,
+                             L(munchExp(dst->u.MEM->u.BINOP.left), NULL),
+                             NULL));
+                return;
+            } else if (dst->kind == T_MEM && dst->u.MEM->kind == T_BINOP &&
+                       dst->u.MEM->u.BINOP.op == T_plus &&
+                       dst->u.MEM->u.BINOP.right->kind == T_BINOP &&
+                       dst->u.MEM->u.BINOP.right->u.BINOP.right->kind ==
+                           T_CONST) {
+                // STORE movq s, (base, idx, size)
+                sprintf(buf, "movq `s0, (`s1, `s2, %d) # store",
+                        dst->u.MEM->u.BINOP.right->u.BINOP.right->u.CONST);
+                emit(AS_Oper(
+                    String(buf), NULL,
+                    L(munchExp(src),
+                      L(munchExp(dst->u.MEM->u.BINOP.left),
+                        L(munchExp(dst->u.MEM->u.BINOP.right->u.BINOP.left),
+                          NULL))),
+                    NULL));
                 return;
             } else if (dst->kind == T_MEM && dst->u.MEM->kind == T_BINOP &&
                        dst->u.MEM->u.BINOP.op == T_plus &&
@@ -104,21 +151,11 @@ static void munchStm(T_stm stm) {
                     AS_Oper(String(buf), L(munchExp(dst), NULL), NULL, NULL);
                 emit(instr);
                 return;
-            }
-            // Matched: function call
-            // else if (src->kind == T_CALL && dst->kind == T_TEMP) {
-            //     Temp_temp r = munchExp(src->u.CALL.fun);
-            //     Temp_tempList l = munchArgs(0, src->u.CALL.args);
-            //     Temp_tempList calldefs =
-            //         L(F_rax(), l);  // return value and args
-            //     emit(AS_Oper("call *`s0\n", calldefs, L(r, l), NULL));
-            //     return;
-            // }
-            else if (dst->kind == T_MEM) {
+            } else if (dst->kind == T_MEM) {
                 Temp_temp val = munchExp(src);
                 Temp_temp addr = munchExp(dst->u.MEM);
-                emit(AS_Oper("movq `s0, (`s0)", L(addr, NULL), L(val, NULL),
-                             NULL));
+                emit(AS_Oper("movq `s0, (`d0) # magic", L(addr, NULL),
+                             L(val, L(addr, NULL)), NULL));
                 return;
             }
             if (dst->kind == T_TEMP) {
@@ -188,20 +225,43 @@ Temp_temp munchExp(T_exp exp) {
     switch (exp->kind) {
         case T_BINOP: {
             // Match "op Imm, $dst", op -> + | - | *
-            if (exp->u.BINOP.op == T_plus &&
-                exp->u.BINOP.right->kind == T_CONST) {
+            if (exp->u.BINOP.op == T_plus && exp->u.BINOP.right &&
+                exp->u.BINOP.right->kind == T_BINOP &&
+                exp->u.BINOP.right->u.BINOP.op == T_mul &&
+                exp->u.BINOP.right->u.BINOP.right->kind == T_CONST) {
+                Temp_temp r = Temp_newtemp();
+                Temp_temp s0 = munchExp(exp->u.BINOP.left);
+                Temp_temp s1 = munchExp(exp->u.BINOP.right->u.BINOP.left);
+                sprintf(buf, "leaq (`s0, `s1, %d), `d0",
+                        exp->u.BINOP.right->u.BINOP.right->u.CONST);
+                emit(
+                    AS_Oper(String(buf), L(r, NULL), L(s0, L(s1, NULL)), NULL));
+                return r;
+            }
+            // side effect addq
+            else if (exp->u.BINOP.op == T_plus &&
+                     exp->u.BINOP.right->kind == T_CONST) {
                 Temp_temp dst = munchExp(exp->u.BINOP.left);
-                char buf[_LEN];
-                sprintf(buf, "addq $%d, `d0 # winter",
-                        exp->u.BINOP.right->u.CONST);
-                AS_instr instr = AS_Oper(String(buf), L(dst, NULL), NULL, NULL);
-                emit(instr);
+                Temp_temp tmp = Temp_newtemp();
+                sprintf(buf, "movq `s0, `d0 # mov4se");
+                emit(AS_Move(String(buf), L(tmp, NULL), L(dst, NULL)));
+                sprintf(buf, "addq $%d, `d0 # im", exp->u.BINOP.right->u.CONST);
+                emit(AS_Oper(String(buf), L(tmp, NULL), L(tmp, NULL), NULL));
+                return tmp;
+            } else if (exp->u.BINOP.op == T_plus &&
+                       exp->u.BINOP.right->kind == T_CONST) {
+                Temp_temp dst = munchExp(exp->u.BINOP.left);
+                // Temp_temp tmp = Temp_newtemp();
+                // sprintf(buf, "movq `s0, `d0 # mov4se");
+                // emit(AS_Move(String(buf), L(tmp, NULL), L(dst, NULL)));
+                sprintf(buf, "addq $%d, `d0 # im", exp->u.BINOP.right->u.CONST);
+                emit(AS_Oper(String(buf), L(dst, NULL), L(dst, NULL), NULL));
                 return dst;
             } else if (exp->u.BINOP.op == T_minus &&
                        exp->u.BINOP.right->kind == T_CONST) {
                 Temp_temp dst = munchExp(exp->u.BINOP.left);
                 char buf[_LEN];
-                sprintf(buf, "subq $%d, `d0", exp->u.BINOP.right->u.CONST);
+                sprintf(buf, "subq $%d, `d0 # im", exp->u.BINOP.right->u.CONST);
                 AS_instr instr =
                     AS_Oper(String(buf), L(dst, NULL), L(dst, NULL), NULL);
                 emit(instr);
@@ -217,11 +277,25 @@ Temp_temp munchExp(T_exp exp) {
             } else if (exp->u.BINOP.op == T_mul &&
                        exp->u.BINOP.right->kind == T_CONST) {
                 Temp_temp dst = munchExp(exp->u.BINOP.left);
+                Temp_temp tmp = Temp_newtemp();
                 char buf[_LEN];
-                sprintf(buf, "imul $%d, `d0", exp->u.BINOP.right->u.CONST);
-                AS_instr instr = AS_Oper(String(buf), L(dst, NULL), NULL, NULL);
+                sprintf(buf, "movq `s0, `d0 # mov4se");
+                emit(AS_Move(String(buf), L(tmp, NULL), L(dst, NULL)));
+                sprintf(buf, "imul $%d, `d0 # im", exp->u.BINOP.right->u.CONST);
+                AS_instr instr =
+                    AS_Oper(String(buf), L(tmp, NULL), L(tmp, NULL), NULL);
                 emit(instr);
-                return dst;
+                return tmp;
+            }
+            if (exp->u.BINOP.op == T_mul) {
+                // imulq S: S * %rax -> %rdx:%rax
+                Temp_temp mul1 = munchExp(exp->u.BINOP.left);
+                Temp_temp mul2 = munchExp(exp->u.BINOP.right);
+                emit(AS_Move("movq `s0, `d0 # imulq", L(F_rax(), NULL),
+                             L(mul1, NULL)));
+                emit(AS_Oper("imulq `s0 # imulq", L(F_rax(), L(F_rdx(), NULL)),
+                             L(mul2, L(F_rax(), NULL)), NULL));
+                return F_rax();
             }
             // idivq $src: %rax(quotient), %rdx(remainder) <- %rdx:%rax // $src
             if (exp->u.BINOP.op == T_div) {
@@ -254,6 +328,7 @@ Temp_temp munchExp(T_exp exp) {
         case T_MEM: {
             Temp_temp val = Temp_newtemp();
             T_exp mem = exp->u.MEM;
+            char buf[_LEN];
             if (mem->kind == T_CONST) {
                 // Match movq Imm, %dst
                 char buf[_LEN];
@@ -263,9 +338,30 @@ Temp_temp munchExp(T_exp exp) {
                 return val;
             } else if (mem->kind == T_BINOP && mem->u.BINOP.op == T_plus &&
                        mem->u.BINOP.right &&
+                       mem->u.BINOP.right->kind == T_BINOP &&
+                       mem->u.BINOP.right->u.BINOP.right->kind == T_CONST) {
+                sprintf(buf, "movq (`s0, `s1, %d), `d0 # arr",
+                        mem->u.BINOP.right->u.BINOP.right->u.CONST);
+                emit(AS_Oper(
+                    String(buf), L(val, NULL),
+                    L(munchExp(mem->u.BINOP.left),
+                      L(munchExp(mem->u.BINOP.right->u.BINOP.left), NULL)),
+                    NULL));
+                return val;
+            } else if (mem->kind == T_BINOP && mem->u.BINOP.op == T_plus &&
+                       mem->u.BINOP.left &&
+                       mem->u.BINOP.left->kind == T_CONST) {
+                // Matched movq Imm(%src), %dst
+                char buf[100];
+                sprintf(buf, "movq %d(`s0), `d0 # movq2 const-l",
+                        mem->u.BINOP.left->u.CONST);
+                emit(AS_Oper(String(buf), L(val, NULL),
+                             L(munchExp(mem->u.BINOP.right), NULL), NULL));
+                return val;
+            } else if (mem->kind == T_BINOP && mem->u.BINOP.op == T_plus &&
+                       mem->u.BINOP.right &&
                        mem->u.BINOP.right->kind == T_CONST) {
                 // Matched movq Imm(%src), %dst
-                // TODO: the mirror match
                 char buf[100];
                 sprintf(buf, "movq %d(`s0), `d0 # movq2",
                         mem->u.BINOP.right->u.CONST);
@@ -276,19 +372,28 @@ Temp_temp munchExp(T_exp exp) {
                        mem->u.BINOP.left &&
                        mem->u.BINOP.left->kind == T_CONST) {
                 // Matched movq Imm(%src), %dst
-                // TODO: the mirror match
                 char buf[100];
                 sprintf(buf, "movq %d(`s0), `d0 # apple",
                         mem->u.MEM->u.BINOP.left->u.CONST);
+                emit(AS_Oper(String(buf),
+                             L(munchExp(mem->u.MEM->u.BINOP.right), NULL),
+                             L(val, NULL), NULL));
+                return val;
+            } else if (mem->kind == T_BINOP && mem->u.BINOP.op == T_plus &&
+                       mem->u.BINOP.right &&
+                       mem->u.BINOP.right->kind == T_CONST) {
+                // Matched movq Imm(%src), %dst
+                sprintf(buf, "movq %d(`s0), `d0 # apple",
+                        mem->u.MEM->u.BINOP.right->u.CONST);
                 emit(AS_Oper(String(buf),
                              L(munchExp(mem->u.MEM->u.BINOP.left), NULL),
                              L(val, NULL), NULL));
                 return val;
             } else {
                 char buf[_LEN];
-                sprintf(buf, "movq `s0, `d0 #T_MEM");
-                AS_instr instr = AS_Move(String(buf), L(val, NULL),
-                                         L(munchExp(exp->u.MEM), NULL));
+                sprintf(buf, "movq (`s0), `d0 # T_MEM default");
+                AS_instr instr = AS_Oper(String(buf), L(val, NULL),
+                                         L(munchExp(exp->u.MEM), NULL), NULL);
                 emit(instr);
                 return val;
             }
@@ -326,11 +431,17 @@ Temp_temp munchExp(T_exp exp) {
     assert(0);
 }
 
+/**
+ * Put args to proper locations for the callee
+ */
 static Temp_tempList munchArgs(int index, T_expList args) {
     if (args == NULL) return NULL;
     Temp_temp r = munchExp(args->head);
     // x86-64 calling convention: %rdi, %rsi, rdx, rcx, r8, r9
     Temp_temp argsTemp[] = {F_rdi(), F_rsi(), F_rdx(), F_rcx(), F_r8(), F_r9()};
+    // if (index == 0) {
+    //     emit(AS_Oper("pushq `s0 # slink", NULL, L(r, NULL), NULL));
+    // } else
     if (index < 6) {
         // move to corresponding register
         emit(AS_Move("movq `s0, `d0 # call param", L(argsTemp[index], NULL),

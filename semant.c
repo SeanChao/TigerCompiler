@@ -83,7 +83,7 @@ struct expty transVar(S_table venv, S_table tenv, A_var v, Tr_level level,
                              actual_ty(x->u.var.ty));
             else {
                 EM_error(v->pos, "undefined variable %s", S_name(v->u.simple));
-                // show_venv(venv);
+                show_venv(venv);
             }
             return expTy(NULL, Ty_Int());
         }
@@ -180,8 +180,8 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a, Tr_level level,
                 EM_error(a->pos, "too many params in function %s",
                          funcName->name);
             }
-            Tr_exp tr =
-                Tr_callExp(funcEntry->u.fun.label, Tr_ExpListTail(list));
+            Tr_exp tr = Tr_callExp(funcEntry->u.fun.label, Tr_ExpListTail(list),
+                                   level, funcEntry->u.fun.level);
             return expTy(tr, funcEntry->u.fun.result);
         }
         case A_opExp: {
@@ -375,6 +375,8 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a, Tr_level level,
             Tr_expList tail = NULL;
             for (; d; d = d->tail) {
                 Tr_exp exp = transDec(venv, tenv, d->head, level, label);
+                // Optimize: when exp is a type-dec, a no-op will be added to
+                // the tree, better be eliminated
                 if (exps == NULL) {
                     exps = tail = Tr_ExpList(exp, NULL);
                 } else {
@@ -505,8 +507,6 @@ Tr_exp transDec(S_table venv, S_table tenv, A_dec d, Tr_level level,
                 Tr_level funcLevel = funEntry->u.fun.level;
                 Tr_accessList accList = Tr_formals(funcLevel);
                 for (; l; l = l->tail, t = t->tail, accList = accList->tail) {
-                    // Tr_access acc = Tr_allocLocal(funcLevel,
-                    // l->head->escape);
                     Tr_access acc = accList->head;
                     S_enter(venv, l->head->name, E_VarEntry(acc, t->head));
                 }
@@ -567,8 +567,8 @@ Ty_ty transTy(S_table tenv, A_ty a) {
 F_fragList SEM_transProg(A_exp exp) {
     S_table venv = E_base_venv();
     S_table tenv = E_base_tenv();
-    Tr_level mainLevel = Tr_newLevel(
-        Tr_outermost(), Temp_namedlabel("tigermain"),  NULL);
+    Tr_level mainLevel =
+        Tr_newLevel(Tr_outermost(), Temp_namedlabel("tigermain"), NULL);
     struct expty prog = transExp(venv, tenv, exp, mainLevel, NULL);
     Tr_procEntryExit(mainLevel, prog.exp, NULL);
     FILE* irOut = fopen("myir.dot", "w");

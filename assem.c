@@ -242,7 +242,7 @@ AS_instrList AS_rewriteSpill(F_frame f, AS_instrList il, Temp_tempList spills) {
             }
             if (listLook(src, t)) {
                 char buf[256];
-                sprintf(buf, "mov %d(`s0), `d0 # spill:use%d", F_getOffset(acc),
+                sprintf(buf, "movq %d(`s0), `d0 # spill:use%d", F_getOffset(acc),
                         id);
                 AS_instr newInstr =
                     AS_Oper(String(buf), Temp_TempList(newTemp, NULL),
@@ -254,7 +254,7 @@ AS_instrList AS_rewriteSpill(F_frame f, AS_instrList il, Temp_tempList spills) {
             }
             if (listLook(dst, t)) {
                 char buf[256];
-                sprintf(buf, "mov `s0, %d(`s1) # spill:def%d", F_getOffset(acc),
+                sprintf(buf, "movq `s0, %d(`s1) # spill:def%d", F_getOffset(acc),
                         id);
                 AS_instr newInstr = AS_Oper(
                     String(buf), NULL,

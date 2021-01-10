@@ -22,7 +22,10 @@ static void printCfgInfo(AS_instr ins) {
     AS_print(stdout, ins, Temp_layerMap(F_tempMap, Temp_name()));
 }
 
-struct RA_result RA_regAlloc(F_frame f, AS_instrList il) {
+struct RA_result RA_regAlloc(F_frame f, AS_instrList il, int cnt) {
+    if(cnt > 8) {
+        abort();
+    }
     struct RA_result ret;
 
     G_graph cfg = FG_AssemFlowGraph(il, f);
@@ -34,7 +37,8 @@ struct RA_result RA_regAlloc(F_frame f, AS_instrList il) {
         il = AS_rewriteSpill(f, il, col.spills);
         printf("====rewrite====\n");
         AS_printInstrList(stdout, il, Temp_layerMap(F_tempMap, Temp_name()));
-        return RA_regAlloc(f, il);
+        // il = AS_rewrite(il, col.coloring);
+        return RA_regAlloc(f, il, cnt + 1);
     }
     AS_instrList rewrite = AS_rewrite(il, col.coloring);
     ret.il = rewrite;

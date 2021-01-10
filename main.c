@@ -83,7 +83,7 @@ static void doProc(FILE *out, F_frame frame, T_stm body) {
     printf("----======before RA=======-----\n");
 
     // G_graph fg = FG_AssemFlowGraph(iList, frame); /* 10.1 */
-    allocation = RA_regAlloc(frame, iList);       /* 11 */
+    allocation = RA_regAlloc(frame, iList, 0);       /* 11 */
 
     printf("----======RA=======-----\n");
     Temp_dumpMap(stdout, allocation.coloring);
