@@ -177,8 +177,9 @@ Tr_expList Tr_ExpListAppend(Tr_expList list, Tr_expList tail) {
 
 static Tr_level Tr_outermostLevel = NULL;
 Tr_level Tr_outermost() {
-    Tr_outermostLevel = Tr_outermostLevel ? Tr_outermostLevel
-                                          : checked_malloc(sizeof(*Tr_outermostLevel));
+    Tr_outermostLevel = Tr_outermostLevel
+                            ? Tr_outermostLevel
+                            : checked_malloc(sizeof(*Tr_outermostLevel));
     return Tr_outermostLevel;
 }
 
@@ -217,7 +218,7 @@ Tr_level Tr_newLevel(Tr_level parent, Temp_label name, U_boolList formals) {
     // Adds an extra element to the formal parameter list for the static link
     Tr_level level = checked_malloc(sizeof(*level));
     // static link as the first parameter
-    level->frame = F_newFrame(name, U_BoolList(FALSE, formals));
+    level->frame = F_newFrame(name, U_BoolList(TRUE, formals));
     level->parent = parent;
     level->accessList = buildTrAccessListFromFrame(level);
     return level;
@@ -292,13 +293,13 @@ Tr_exp Tr_callExp(Temp_label funcLabel, Tr_expList args, Tr_level caller,
     if (callee == Tr_outermost()) {
         exp = T_Call(T_Name(funcLabel), argStm->tail);
     } else {
-        // set up static link
+        // set up static link: equivalent to multi-level pointer
         T_exp fp = T_Temp(F_FP());
         Tr_level lv = caller;
         T_exp staticLink = fp;
         while (lv != callee->parent) {
             staticLink =
-                (T_Binop(T_plus, staticLink, T_Const(F_wordSize * 2)));
+                F_Exp(F_formalAccessList(caller->frame)->head, staticLink);
             lv = lv->parent;
         }
         exp = T_Call(T_Name(funcLabel), T_ExpList(staticLink, argStm->tail));
@@ -346,6 +347,11 @@ Tr_exp Tr_opExp(A_oper op, Tr_exp left, Tr_exp right) {
     }
     printf("impl Tr_op!\n");
     assert(0);
+}
+
+Tr_exp Tr_StringCmp(Tr_exp left, Tr_exp right) {
+    return Tr_Ex(F_externalCall(
+        "stringEqual", T_ExpList(unEx(left), T_ExpList(unEx(right), NULL))));
 }
 
 Tr_exp Tr_RecordExp(Tr_expList recList) {

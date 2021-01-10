@@ -1,5 +1,6 @@
-#include "regalloc.h"
 #include <stdio.h>
+#include <stdlib.h>
+
 #include "absyn.h"
 #include "assem.h"
 #include "color.h"
@@ -7,23 +8,17 @@
 #include "frame.h"
 #include "graph.h"
 #include "liveness.h"
+#include "regalloc.h"
 #include "symbol.h"
 #include "table.h"
 #include "temp.h"
 #include "tree.h"
 #include "util.h"
 
-void printLg(Temp_temp t) {
-    printf("%d ", Temp_getnum(t));
-    printf("\n");
-}
-
-static void printCfgInfo(AS_instr ins) {
-    AS_print(stdout, ins, Temp_layerMap(F_tempMap, Temp_name()));
-}
+// #define DEBUG 42
 
 struct RA_result RA_regAlloc(F_frame f, AS_instrList il, int cnt) {
-    if(cnt > 8) {
+    if (cnt > 10) {
         abort();
     }
     struct RA_result ret;
@@ -37,7 +32,6 @@ struct RA_result RA_regAlloc(F_frame f, AS_instrList il, int cnt) {
         il = AS_rewriteSpill(f, il, col.spills);
         printf("====rewrite====\n");
         AS_printInstrList(stdout, il, Temp_layerMap(F_tempMap, Temp_name()));
-        // il = AS_rewrite(il, col.coloring);
         return RA_regAlloc(f, il, cnt + 1);
     }
     AS_instrList rewrite = AS_rewrite(il, col.coloring);

@@ -178,3 +178,8 @@ void Temp_tempReplace(Temp_tempList l, Temp_temp origin, Temp_temp newTemp) {
         }
     }
 }
+
+void printLg(void *t) {
+    t = (Temp_temp)t;
+    printf("%d \n", Temp_getnum(t));
+}

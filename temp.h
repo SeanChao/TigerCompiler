@@ -53,4 +53,5 @@ int Temp_getnum(Temp_temp t);
 
 void Temp_tempReplace(Temp_tempList l, Temp_temp old, Temp_temp newTemp);
 
+void printLg(void *t);
 #endif

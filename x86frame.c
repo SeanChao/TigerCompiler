@@ -68,11 +68,11 @@ T_exp F_Exp(F_access acc, T_exp framePtr) {
 }
 
 static F_access F_AccessInFrame(F_frame frame) {
-    F_access access = checked_malloc(sizeof(*access));
+    frame->size += F_wordSize;
     int offset = -(frame->size);
+    F_access access = checked_malloc(sizeof(*access));
     access->kind = inFrame;
     access->u.offset = offset;
-    frame->size += F_wordSize;
     F_accessList locals = frame->localVars;
     if (!locals)
         frame->localVars = F_AccessList(access, NULL);
@@ -127,7 +127,7 @@ F_frame F_newFrame(Temp_label name, U_boolList Tr_formals) {
     F_frame frame = checked_malloc(sizeof(*frame));
     frame->name = name;
     frame->escapeList = Tr_formals;
-    frame->size = 8;
+    frame->size = 0;
     frame->formals = createAccessList(frame, Tr_formals);
     frame->localVars = NULL;
     // frame->localVars = createAccessList(frame, Tr_formals);

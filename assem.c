@@ -183,8 +183,7 @@ AS_proc AS_Proc(string p, AS_instrList b, string e) {
 
 AS_instrList AS_rewrite(AS_instrList iList, Temp_map m) {
     AS_instrList prev = NULL;
-    AS_instrList origin = iList;
-
+    AS_instrList list = iList;
     for (AS_instrList i = iList; i; i = i->tail) {
         AS_instr instr = i->head;
         if (instr->kind == I_MOVE) {
@@ -195,30 +194,29 @@ AS_instrList AS_rewrite(AS_instrList iList, Temp_map m) {
                     prev->tail = i->tail;
                     continue;
                 } else {
-                    origin = i->tail;
+                    list = i->tail;
                 }
             }
-        }
-        if (instr->kind == I_OPER &&
-            strncmp("jmp", instr->u.OPER.assem, 4) == 0) {
+        } else if (instr->kind == I_OPER &&
+                   strncmp("jmp", instr->u.OPER.assem, 3) == 0) {
+            // remove redundant jump: jump instruction followed by target label
             if (i->tail) {
-                AS_instr nInstr = i->tail->head;
-                if (nInstr->kind == I_LABEL &&
-                    nInstr->u.LABEL.label ==
-                        instr->u.OPER.jumps->labels->head) {
+                AS_instr next = i->tail->head;
+                if (next->kind == I_LABEL &&
+                    next->u.LABEL.label == instr->u.OPER.jumps->labels->head) {
                     i = i->tail;
                     if (prev) {
                         prev->tail = i->tail;
                         continue;
                     } else {
-                        origin = i->tail;
+                        list = i->tail;
                     }
                 }
             }
         }
         prev = i;
     }
-    return origin;
+    return list;
 }
 
 AS_instrList AS_rewriteSpill(F_frame f, AS_instrList il, Temp_tempList spills) {
@@ -242,8 +240,8 @@ AS_instrList AS_rewriteSpill(F_frame f, AS_instrList il, Temp_tempList spills) {
             }
             if (listLook(src, t)) {
                 char buf[256];
-                sprintf(buf, "movq %d(`s0), `d0 # spill:use%d", F_getOffset(acc),
-                        id);
+                sprintf(buf, "movq %d(`s0), `d0 # spill:use%d",
+                        F_getOffset(acc), id);
                 AS_instr newInstr =
                     AS_Oper(String(buf), Temp_TempList(newTemp, NULL),
                             Temp_TempList(F_FP(), NULL), NULL);
@@ -254,8 +252,8 @@ AS_instrList AS_rewriteSpill(F_frame f, AS_instrList il, Temp_tempList spills) {
             }
             if (listLook(dst, t)) {
                 char buf[256];
-                sprintf(buf, "movq `s0, %d(`s1) # spill:def%d", F_getOffset(acc),
-                        id);
+                sprintf(buf, "movq `s0, %d(`s1) # spill:def%d",
+                        F_getOffset(acc), id);
                 AS_instr newInstr = AS_Oper(
                     String(buf), NULL,
                     Temp_TempList(newTemp, Temp_TempList(F_FP(), NULL)), NULL);
@@ -270,4 +268,9 @@ AS_instrList AS_rewriteSpill(F_frame f, AS_instrList il, Temp_tempList spills) {
 
 void AS_print2(FILE *f, AS_instr instr) {
     AS_print(f, instr, Temp_layerMap(F_tempMap, Temp_name()));
+}
+
+void printCfgInfo(void *p) {
+    AS_instr ins = (AS_instr)p;
+    AS_print(stdout, ins, Temp_layerMap(F_tempMap, Temp_name()));
 }

@@ -67,7 +67,7 @@ S_table E_base_venv(void) {
     venv = S_empty();
 
     S_enter(venv, S_Symbol("flush"),
-            E_FunEntry(level, Temp_newlabel(), NULL, NULL));
+            E_FunEntry(level,Temp_namedlabel("flush"), NULL, NULL));
 
     result = Ty_Int();
 
@@ -75,23 +75,22 @@ S_table E_base_venv(void) {
     formals->head = Ty_Int();
     formals->tail = NULL;
     S_enter(venv, S_Symbol("exit"),
-            E_FunEntry(level, Temp_newlabel(), formals, NULL));
+            E_FunEntry(level, Temp_namedlabel("exit"), formals, NULL));
 
     S_enter(venv, S_Symbol("not"),
-            E_FunEntry(level, Temp_newlabel(), formals, result));
+            E_FunEntry(level, Temp_namedlabel("not"), formals, result));
 
     result = Ty_String();
 
     S_enter(venv, S_Symbol("chr"),
-            E_FunEntry(level, Temp_newlabel(), formals, result));
+            E_FunEntry(level, Temp_namedlabel("chr"), formals, result));
 
     S_enter(venv, S_Symbol("getchar"),
-            E_FunEntry(level, Temp_newlabel(), NULL, result));
+            E_FunEntry(level, Temp_namedlabel("getchar"), NULL, result));
 
     formals = checked_malloc(sizeof(*formals));
     formals->head = Ty_String();
     formals->tail = NULL;
-// TODO: turn all Temp_newlabel to namedlabel
 
     S_enter(venv, S_Symbol("print"),
             E_FunEntry(level, Temp_namedlabel("print"), formals, Ty_Void()));
@@ -100,10 +99,10 @@ S_table E_base_venv(void) {
                        Ty_TyList(Ty_Int(), NULL), Ty_Void()));
     result = Ty_Int();
     S_enter(venv, S_Symbol("ord"),
-            E_FunEntry(level, Temp_newlabel(), formals, result));
+            E_FunEntry(level, Temp_namedlabel("ord"), formals, result));
 
     S_enter(venv, S_Symbol("size"),
-            E_FunEntry(level, Temp_newlabel(), formals, result));
+            E_FunEntry(level, Temp_namedlabel("size"), formals, result));
 
     result = Ty_String();
     formals = checked_malloc(sizeof(*formals));
@@ -111,7 +110,7 @@ S_table E_base_venv(void) {
     formals->tail = checked_malloc(sizeof(*formals));
     formals->tail->head = Ty_String();
     S_enter(venv, S_Symbol("concat"),
-            E_FunEntry(level, Temp_newlabel(), formals, result));
+            E_FunEntry(level, Temp_namedlabel("concat"), formals, result));
 
     formals = checked_malloc(sizeof(*formals));
     formals->head = Ty_String();
@@ -120,7 +119,7 @@ S_table E_base_venv(void) {
     formals->tail->tail = checked_malloc(sizeof(*formals));
     formals->tail->tail->head = Ty_Int();
     S_enter(venv, S_Symbol("substring"),
-            E_FunEntry(level, Temp_newlabel(), formals, result));
+            E_FunEntry(level, Temp_namedlabel("substring"), formals, result));
 
     return venv;
 }

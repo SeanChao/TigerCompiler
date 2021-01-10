@@ -208,6 +208,11 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a, Tr_level level,
                         EM_error(a->pos, "same type required");
                     return expTy(Tr_opExp(oper, left.exp, right.exp), Ty_Int());
                 case A_eqOp:
+                    if (actual_ty(left.ty)->kind == Ty_string &&
+                        actual_ty(right.ty)->kind == Ty_string) {
+                        return expTy(Tr_StringCmp(left.exp, right.exp),
+                                     Ty_Int());
+                    }
                     return expTy(Tr_opExp(oper, left.exp, right.exp), Ty_Int());
                 case A_neqOp:
                     if (left.ty->kind != right.ty->kind)
@@ -279,9 +284,7 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a, Tr_level level,
                 transExp(venv, tenv, a->u.iff.test, level, label);
             struct expty thenExp =
                 transExp(venv, tenv, a->u.iff.then, level, label);
-            struct expty elseExp =
-                transExp(venv, tenv, a->u.iff.elsee, level, label);
-            int ifThenExp = elseExp.ty->kind == Ty_nil;
+            bool ifThenExp = a->u.iff.elsee == NULL;
             Tr_exp trexp;
             if (ifThenExp) {
                 // Note: <special case> in merge.tig
@@ -294,7 +297,14 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a, Tr_level level,
                              "if-then exp's body must produce no value");
                 trexp = Tr_ifThenExp(testExp.exp, thenExp.exp);
             } else {
-                if (actual_ty(thenExp.ty) != actual_ty(elseExp.ty))
+                struct expty elseExp =
+                    transExp(venv, tenv, a->u.iff.elsee, level, label);
+                Ty_ty thenTy = actual_ty(thenExp.ty);
+                Ty_ty elseTy = actual_ty(elseExp.ty);
+                if (thenTy->kind == Ty_record && elseTy->kind == Ty_nil) {
+                } else if (thenTy->kind == Ty_nil &&
+                           elseTy->kind == Ty_record) {
+                } else if (thenTy != elseTy)
                     EM_error(a->u.iff.then->pos,
                              "then exp and else exp type mismatch");
                 trexp = Tr_ifThenElseExp(testExp.exp, thenExp.exp, elseExp.exp);
@@ -571,9 +581,9 @@ F_fragList SEM_transProg(A_exp exp) {
         Tr_newLevel(Tr_outermost(), Temp_namedlabel("tigermain"), NULL);
     struct expty prog = transExp(venv, tenv, exp, mainLevel, NULL);
     Tr_procEntryExit(mainLevel, prog.exp, NULL);
-    FILE* irOut = fopen("myir.dot", "w");
-    printIR(irOut);
-    fclose(irOut);
+    // FILE* irOut = fopen("myir.dot", "w");
+    // printIR(irOut);
+    // fclose(irOut);
     return Tr_getResult();
 }
 
@@ -592,14 +602,13 @@ Ty_tyList makeFormalTyList(S_table tenv, A_fieldList params) {
     return tyList;
 }
 
-static U_boolList makeBoolList(A_fieldList params) {
+U_boolList makeBoolList(A_fieldList params) {
     A_fieldList cur = params;
     if (params == NULL) return NULL;
     U_boolList boolList = U_BoolList(cur->head->escape, NULL);
     U_boolList last = boolList;
     cur = cur->tail;
     while (cur) {
-        A_field field = cur->head;
         last = last->tail = U_BoolList(cur->head->escape, NULL);
         cur = cur->tail;
     }

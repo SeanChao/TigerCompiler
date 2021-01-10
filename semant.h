@@ -18,5 +18,5 @@ Ty_ty transTy(S_table tenv, A_ty a);
 
 F_fragList SEM_transProg(A_exp exp);
 
-static U_boolList makeBoolList(A_fieldList);
+U_boolList makeBoolList(A_fieldList);
 #endif

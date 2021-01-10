@@ -154,7 +154,7 @@ static void munchStm(T_stm stm) {
             } else if (dst->kind == T_MEM) {
                 Temp_temp val = munchExp(src);
                 Temp_temp addr = munchExp(dst->u.MEM);
-                emit(AS_Oper("movq `s0, (`d0) # magic", L(addr, NULL),
+                emit(AS_Oper("movq `s0, (`s1) # magic", NULL,
                              L(val, L(addr, NULL)), NULL));
                 return;
             }
@@ -171,16 +171,6 @@ static void munchStm(T_stm stm) {
         }
         case T_EXP: {
             munchExp(stm->u.EXP);
-            // if (stm->u.EXP->kind == T_CALL) {
-            //     // Matched a procedure call
-            //     Temp_temp r = munchExp(stm->u.EXP->u.CALL.fun);
-            //     Temp_tempList args = munchArgs(0, stm->u.EXP->u.CALL.args);
-            //     Temp_tempList calldefs =
-            //         L(F_rax(), args);  // return value and args
-            //     emit(AS_Oper("call *`s0", calldefs, L(r, args), NULL));
-            //     return;
-            // }
-            // munchExp(stm->u.EXP);
             return;
         }
         case T_LABEL: {
@@ -248,32 +238,16 @@ Temp_temp munchExp(T_exp exp) {
                 sprintf(buf, "addq $%d, `d0 # im", exp->u.BINOP.right->u.CONST);
                 emit(AS_Oper(String(buf), L(tmp, NULL), L(tmp, NULL), NULL));
                 return tmp;
-            } else if (exp->u.BINOP.op == T_plus &&
-                       exp->u.BINOP.right->kind == T_CONST) {
-                Temp_temp dst = munchExp(exp->u.BINOP.left);
-                // Temp_temp tmp = Temp_newtemp();
-                // sprintf(buf, "movq `s0, `d0 # mov4se");
-                // emit(AS_Move(String(buf), L(tmp, NULL), L(dst, NULL)));
-                sprintf(buf, "addq $%d, `d0 # im", exp->u.BINOP.right->u.CONST);
-                emit(AS_Oper(String(buf), L(dst, NULL), L(dst, NULL), NULL));
-                return dst;
             } else if (exp->u.BINOP.op == T_minus &&
                        exp->u.BINOP.right->kind == T_CONST) {
                 Temp_temp dst = munchExp(exp->u.BINOP.left);
+                Temp_temp tmp = Temp_newtemp();
                 char buf[_LEN];
+                sprintf(buf, "movq `s0, `d0 # 4im");
+                emit(AS_Move(String(buf), L(tmp, NULL), L(dst, NULL)));
                 sprintf(buf, "subq $%d, `d0 # im", exp->u.BINOP.right->u.CONST);
-                AS_instr instr =
-                    AS_Oper(String(buf), L(dst, NULL), L(dst, NULL), NULL);
-                emit(instr);
-                return dst;
-            } else if (exp->u.BINOP.op == T_minus &&
-                       exp->u.BINOP.right->kind == T_CONST) {
-                Temp_temp dst = munchExp(exp->u.BINOP.left);
-                char buf[_LEN];
-                sprintf(buf, "subq $%d, `s0", exp->u.BINOP.right->u.CONST);
-                AS_instr instr = AS_Oper(String(buf), L(dst, NULL), NULL, NULL);
-                emit(instr);
-                return dst;
+                emit(AS_Oper(String(buf), L(tmp, NULL), L(tmp, NULL), NULL));
+                return tmp;
             } else if (exp->u.BINOP.op == T_mul &&
                        exp->u.BINOP.right->kind == T_CONST) {
                 Temp_temp dst = munchExp(exp->u.BINOP.left);
@@ -318,12 +292,13 @@ Temp_temp munchExp(T_exp exp) {
             // l <-  l op r
             Temp_temp dst = munchExp(exp->u.BINOP.left);
             Temp_temp src = munchExp(exp->u.BINOP.right);
-            char buf[_LEN];
+            Temp_temp tmp = Temp_newtemp();
+            sprintf(buf, "movq `s0, `d0 # last mov4se");
+            emit(AS_Move(String(buf), L(tmp, NULL), L(dst, NULL)));
             sprintf(buf, "%s `s0, `d0 # last match", opStr[exp->u.BINOP.op]);
-            AS_instr instr =
-                AS_Oper(String(buf), L(dst, NULL), L(src, L(dst, NULL)), NULL);
-            emit(instr);
-            return dst;
+            emit(
+                AS_Oper(String(buf), L(tmp, NULL), L(src, L(tmp, NULL)), NULL));
+            return tmp;
         }
         case T_MEM: {
             Temp_temp val = Temp_newtemp();

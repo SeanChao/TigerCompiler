@@ -43,15 +43,6 @@ Live_moveList Live_MoveList(G_node src, G_node dst, Live_moveList tail) {
 
 Temp_temp Live_gtemp(G_node n) { return G_nodeInfo(n); }
 
-static void printLg(Temp_temp t) {
-    printf("%d ", Temp_getnum(t));
-    printf("\n");
-}
-
-static void printCfgInfo(AS_instr ins) {
-    AS_print(stdout, ins, Temp_layerMap(F_tempMap, Temp_name()));
-}
-
 struct Live_graph Live_liveness(G_graph flow) {
     struct Live_graph lg;
     // Liveness analysis
@@ -173,7 +164,6 @@ struct Live_graph Live_liveness(G_graph flow) {
         G_node node = iter->head;
         if (FG_isMove(node)) {
             AS_instr instr = G_nodeInfo(node);
-            // FIXME: is from/to lists with one element?
             Temp_temp from = instr->u.MOVE.src->head;
             Temp_temp to = instr->u.MOVE.dst->head;
             if (!from) continue;  // src is not a register

@@ -61,6 +61,7 @@ Tr_exp Tr_arrayExp(Tr_exp size, Tr_exp eleVal);
 Tr_exp Tr_breakExp(Temp_label label);
 Tr_exp Tr_forExp(Tr_access loopVar, Tr_level varLevel, Tr_exp lo, Tr_exp hi,
                  Tr_exp body, Temp_label done);
+Tr_exp Tr_StringCmp(Tr_exp left, Tr_exp right) ;
 
 /* Declarations */
 Tr_exp Tr_varDec(Tr_access access, Tr_exp init);
